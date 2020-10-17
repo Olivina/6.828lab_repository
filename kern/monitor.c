@@ -26,15 +26,15 @@ typedef struct Stackframe {
 	const uint32_t arg[5];
 } Stackframe;
 
-int mon_fuck(int argc, char ** argv, struct Trapframe *tf);
+int mon_fu(int argc, char ** argv, struct Trapframe *tf);
 int mon_shut(int argc, char ** argv, struct Trapframe *tf);
 int mon_print(int argc, char ** argv, struct Trapframe *tf);
 
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
-	{ "fuck", "Fuck You", mon_fuck },
-	{ "shutdown", "Turn off your f**king qemu", mon_shut },
+	{ "fu", "Fu You", mon_fu },
+	{ "shutdown", "Turn off your qemu", mon_shut },
 	{ "cprintf", "print your string", mon_print },
 	{ "backtrace", "print the stack backtrace", mon_backtrace },
 };
@@ -47,16 +47,16 @@ int mon_print(int argc, char ** argv, struct Trapframe *tf){
 	return 0;
 }
 
-int mon_fuck(int argc, char ** argv, struct Trapframe *tf)
+int mon_fu(int argc, char ** argv, struct Trapframe *tf)
 {
-	cprintf("\033[36m\033[48mfuck\n");
+	cprintf("\033[36m\033[48mtest\n");
 	// debuginfo_eip();
 	return 0;
 }
 
 int mon_shut(int argc, char ** argv, struct Trapframe *tf)
 {
-	cprintf("Your f**king qemu is turning off...\n");
+	cprintf("Your qemu is turning off...\n");
 
 	return -1;
 }
