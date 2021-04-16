@@ -20,13 +20,46 @@ struct Command {
 	// return -1 to force monitor to exit
 	int (*func)(int argc, char** argv, struct Trapframe* tf);
 };
+typedef struct Stackframe {
+	const uint32_t ebp;
+	const uint32_t eip;
+	const uint32_t arg[5];
+} Stackframe;
+
+int mon_fu(int argc, char ** argv, struct Trapframe *tf);
+int mon_shut(int argc, char ** argv, struct Trapframe *tf);
+int mon_print(int argc, char ** argv, struct Trapframe *tf);
 
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
+	{ "fu", "Fu You", mon_fu },
+	{ "shutdown", "Turn off your qemu", mon_shut },
+	{ "cprintf", "print your string", mon_print },
+	{ "backtrace", "print the stack backtrace", mon_backtrace },
 };
 
 /***** Implementations of basic kernel monitor commands *****/
+
+int mon_print(int argc, char ** argv, struct Trapframe *tf){
+	cprintf(argv[1]);
+	cprintf("\n");
+	return 0;
+}
+
+int mon_fu(int argc, char ** argv, struct Trapframe *tf)
+{
+	cprintf("\033[36m\033[48mtest\n");
+	// debuginfo_eip();
+	return 0;
+}
+
+int mon_shut(int argc, char ** argv, struct Trapframe *tf)
+{
+	cprintf("Your qemu is turning off...\n");
+
+	return -1;
+}
 
 int
 mon_help(int argc, char **argv, struct Trapframe *tf)
@@ -58,9 +91,22 @@ int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 {
 	// Your code here.
+	cprintf("Stack backtrace:\n");
+	Stackframe * sf = (Stackframe *) read_ebp();
+	struct Eipdebuginfo info;
+	do{
+		cprintf("  ebp %08x ", sf);
+		cprintf("eip %08x ", sf->eip);
+		cprintf("args %08x %08x %08x %08x %08x\n", sf->arg[0], sf->arg[1], sf->arg[2], sf->arg[3], sf->arg[4]);
+		debuginfo_eip((uintptr_t) sf->eip, &info);
+		cprintf("\t%s:%d: ", info.eip_file, info.eip_line);
+		cprintf("%.*s", info.eip_fn_namelen, info.eip_fn_name);
+		cprintf("+%d\n", (int)(sf->eip - info.eip_fn_addr));
+	}
+	while( (sf= (Stackframe *) sf->ebp ) != NULL);
+	
 	return 0;
 }
-
 
 
 /***** Kernel monitor command interpreter *****/
@@ -107,7 +153,7 @@ runcmd(char *buf, struct Trapframe *tf)
 	return 0;
 }
 
-void
+int
 monitor(struct Trapframe *tf)
 {
 	char *buf;
@@ -115,11 +161,11 @@ monitor(struct Trapframe *tf)
 	cprintf("Welcome to the JOS kernel monitor!\n");
 	cprintf("Type 'help' for a list of commands.\n");
 
-
 	while (1) {
 		buf = readline("K> ");
 		if (buf != NULL)
 			if (runcmd(buf, tf) < 0)
 				break;
 	}
+	return 0;
 }

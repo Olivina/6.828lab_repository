@@ -30,8 +30,9 @@ i386_init(void)
 	mem_init();
 
 	// Drop into the kernel monitor.
-	while (1)
-		monitor(NULL);
+	// while (1)
+	// 	monitor(NULL);
+	while(monitor(NULL));
 }
 
 
@@ -67,6 +68,7 @@ dead:
 	/* break into the kernel monitor */
 	while (1)
 		monitor(NULL);
+	// while(monitor(NULL));
 }
 
 /* like panic, but don't */

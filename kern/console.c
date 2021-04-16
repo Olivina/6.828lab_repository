@@ -126,7 +126,7 @@ lpt_putc(int c)
 /***** Text-mode CGA/VGA display output *****/
 
 static unsigned addr_6845;
-static uint16_t *crt_buf;
+static uint16_t *crt_buf; // buffer that stores chars for the whole screen.
 static uint16_t crt_pos;
 
 static void
@@ -164,7 +164,7 @@ cga_putc(int c)
 {
 	// if no attribute given, then use black on white
 	if (!(c & ~0xFF))
-		c |= 0x0700;
+		c |= 0x0700;//0700
 
 	switch (c & 0xff) {
 	case '\b':
@@ -187,11 +187,12 @@ cga_putc(int c)
 		cons_putc(' ');
 		break;
 	default:
-		crt_buf[crt_pos++] = c;		/* write the character */
+		crt_buf[crt_pos++] = c;		/* write the character */ // and then increase the position.
 		break;
 	}
 
 	// What is the purpose of this?
+	// because this function deal with char one by one, so the additional line must have no real information, we may just copy CRT_SIZE - CRT_COLS characters and set the position.
 	if (crt_pos >= CRT_SIZE) {
 		int i;
 
