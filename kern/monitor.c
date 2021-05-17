@@ -29,6 +29,7 @@ typedef struct Stackframe {
 int mon_fu(int argc, char ** argv, struct Trapframe *tf);
 int mon_shut(int argc, char ** argv, struct Trapframe *tf);
 int mon_print(int argc, char ** argv, struct Trapframe *tf);
+int mon_warn(int argc, char ** argv, struct Trapframe *tf);
 
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
@@ -37,9 +38,21 @@ static struct Command commands[] = {
 	{ "shutdown", "Turn off your qemu", mon_shut },
 	{ "cprintf", "print your string", mon_print },
 	{ "backtrace", "print the stack backtrace", mon_backtrace },
+	{ "warntest", "test warn function", mon_warn }
 };
 
 /***** Implementations of basic kernel monitor commands *****/
+
+int mon_warn(int argc, char ** argv, struct Trapframe *tf){
+	int a = 10;
+	cprintf("checkpt0\n");
+	warn("fuckyou");
+	cprintf("checkpt1\n");
+	warn("fuckyou");
+	cprintf("checkpt2\n");
+	cprintf("warn done\n");
+	return 0;
+}
 
 int mon_print(int argc, char ** argv, struct Trapframe *tf){
 	cprintf(argv[1]);
@@ -164,8 +177,9 @@ monitor(struct Trapframe *tf)
 	while (1) {
 		buf = readline("K> ");
 		if (buf != NULL)
-			if (runcmd(buf, tf) < 0)
+			if (runcmd(buf, tf) < 0){
 				break;
+			}
 	}
 	return 0;
 }

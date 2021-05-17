@@ -31,8 +31,9 @@ i386_init(void)
 
 	// Drop into the kernel monitor.
 	// while (1)
-	// 	monitor(NULL);
-	while(monitor(NULL));
+	monitor(NULL);
+	// cprintf("return to i386_init\n");
+	// while(monitor(NULL));
 }
 
 
