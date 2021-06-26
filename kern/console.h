@@ -15,7 +15,7 @@
 
 #define CRT_ROWS	25
 #define CRT_COLS	80
-#define CRT_SIZE	(CRT_ROWS * CRT_COLS)
+#define CRT_SIZE	(CRT_ROWS * CRT_COLS) // the number of chars that one page of crt can contain.
 
 void cons_init(void);
 int cons_getc(void);

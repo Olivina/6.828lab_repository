@@ -62,22 +62,24 @@ stab_binsearch(const struct Stab *stabs, int *region_left, int *region_right,
 {
 	int l = *region_left, r = *region_right, any_matches = 0;
 
-	while (l <= r) {
+	while (l <= r) {// l and r are the No. of entries.
 		int true_m = (l + r) / 2, m = true_m;
 
 		// search for earliest stab with right type
-		while (m >= l && stabs[m].n_type != type)
+		while (m >= l && stabs[m].n_type != type)// use "type" to rule out the irrelevant entries.
 			m--;
+
 		if (m < l) {	// no match in [l, m]
-			l = true_m + 1;
+			l = true_m + 1;// then, search [m+1, r]
 			continue;
 		}
+		// now we got an "m" whose type is correct but up til now we don't know if its address matches. we must decide m should be regarded as left or right in (left < addr < right)
 
 		// actual binary search
 		any_matches = 1;
 		if (stabs[m].n_value < addr) {
-			*region_left = m;
-			l = true_m + 1;
+			*region_left = m;// the current m is valid: left < addr
+			l = true_m + 1;//search again on [m+1, r]
 		} else if (stabs[m].n_value > addr) {
 			*region_right = m - 1;
 			r = m - 1;
@@ -152,6 +154,8 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 		// LAB 3: Your code here.
 	}
 
+	//stab is a list of entries numbered by (int) number.
+
 	// String table validity checks
 	if (stabstr_end <= stabstr || stabstr_end[-1] != 0)
 		return -1;
@@ -164,9 +168,10 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 	// Search the entire set of stabs for the source file (type N_SO).
 	lfile = 0;
 	rfile = (stab_end - stabs) - 1;
-	stab_binsearch(stabs, &lfile, &rfile, N_SO, addr);
+	stab_binsearch(stabs, &lfile, &rfile, N_SO, addr);// N_SO marks the main source file name entry
 	if (lfile == 0)
 		return -1;
+	//stabs[lfile] points to the file name.
 
 	// Search within that file's stabs for the function definition
 	// (N_FUN).
@@ -177,7 +182,7 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 	if (lfun <= rfun) {
 		// stabs[lfun] points to the function name
 		// in the string table, but check bounds just in case.
-		if (stabs[lfun].n_strx < stabstr_end - stabstr)
+		if (stabs[lfun].n_strx < stabstr_end - stabstr)// locate in the valid area [stabstr, stabstr_end]
 			info->eip_fn_name = stabstr + stabs[lfun].n_strx;
 		info->eip_fn_addr = stabs[lfun].n_value;
 		addr -= info->eip_fn_addr;
@@ -194,7 +199,6 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 	// Ignore stuff after the colon.
 	info->eip_fn_namelen = strfind(info->eip_fn_name, ':') - info->eip_fn_name;
 
-
 	// Search within [lline, rline] for the line number stab.
 	// If found, set info->eip_line to the right line number.
 	// If not found, return -1.
@@ -204,7 +208,14 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 	//	Look at the STABS documentation and <inc/stab.h> to find
 	//	which one.
 	// Your code here.
-
+	stab_binsearch(stabs, &lline, &rline, N_SLINE, addr);
+	if(lline == rline && lline >= 0){
+		info->eip_line = stabs[lline].n_desc;
+	}
+	else{
+		info->eip_line = 0;
+		return -1;
+	}
 
 	// Search backwards from the line number for the relevant filename
 	// stab.
