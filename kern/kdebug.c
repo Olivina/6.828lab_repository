@@ -144,7 +144,11 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 		// Make sure this memory is valid.
 		// Return -1 if it is not.  Hint: Call user_mem_check.
 		// LAB 3: Your code here.
+		
+		if(user_mem_check(curenv, (const void*)usd, sizeof(struct UserStabData), PTE_P|PTE_U) < 0)
+			return -1;
 
+		cprintf("fuckme stab\n");
 		stabs = usd->stabs;
 		stab_end = usd->stab_end;
 		stabstr = usd->stabstr;
@@ -152,6 +156,10 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 
 		// Make sure the STABS and string table memory is valid.
 		// LAB 3: Your code here.
+		if(user_mem_check(curenv, (const void*)stabs, (size_t) stab_end - (size_t) stabs, PTE_P|PTE_U) < 0)
+			return -1;
+		if(user_mem_check(curenv, (const void*)stabs, (size_t) stabstr_end - (size_t) stabstr, PTE_P|PTE_U) < 0)
+			return -1;
 	}
 
 	//stab is a list of entries numbered by (int) number.

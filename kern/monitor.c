@@ -31,6 +31,8 @@ int mon_fu(int argc, char ** argv, struct Trapframe *tf);
 int mon_shut(int argc, char ** argv, struct Trapframe *tf);
 int mon_print(int argc, char ** argv, struct Trapframe *tf);
 int mon_warn(int argc, char ** argv, struct Trapframe *tf);
+int mon_continue(int argc, char ** argv, struct Trapframe *tf);
+int mon_stepi(int argc, char ** argv, struct Trapframe *tf);
 
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
@@ -39,10 +41,24 @@ static struct Command commands[] = {
 	{ "shutdown", "Turn off your qemu", mon_shut },
 	{ "cprintf", "print your string", mon_print },
 	{ "backtrace", "print the stack backtrace", mon_backtrace },
-	{ "warntest", "test warn function", mon_warn }
+	{ "warntest", "test warn function", mon_warn },
+	{ "continue", "continue executing monitor", mon_continue},
+	{ "stepi", "next instruction", mon_stepi},
 };
 
 /***** Implementations of basic kernel monitor commands *****/
+
+int mon_continue(int argc, char ** argv, struct Trapframe *tf){
+	tf -> tf_eflags &= ~FL_TF;
+	cprintf("continue\n");
+	return -1;
+}
+
+int mon_stepi(int argc, char ** argv, struct Trapframe *tf){
+	tf -> tf_eflags |= FL_TF;
+	cprintf("stepi\n");
+	return -1;
+}
 
 int mon_warn(int argc, char ** argv, struct Trapframe *tf){
 	int a = 10;
@@ -120,6 +136,10 @@ mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 	while( (sf= (Stackframe *) sf->ebp ) != NULL);
 	
 	return 0;
+}
+
+int mon_exit(int argc, char ** argv, struct Trapframe *tf){
+	return -1;
 }
 
 

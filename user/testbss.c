@@ -23,5 +23,6 @@ umain(int argc, char **argv)
 
 	cprintf("Yes, good.  Now doing a wild write off the end...\n");
 	bigarray[ARRAYSIZE+1024] = 0;
+	// bigarray[ARRAYSIZE+1048136] = 0;
 	panic("SHOULD HAVE TRAPPED!!!");
 }

@@ -69,6 +69,8 @@ void	user_mem_assert(struct Env *env, const void *va, size_t len, int perm);
 static inline physaddr_t
 page2pa(struct PageInfo *pp)
 {
+	if(pp < pages)
+		panic("page2pa called with invalid pp 0x%x", pp);
 	return (pp - pages) << PGSHIFT;
 }
 

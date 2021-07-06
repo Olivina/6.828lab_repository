@@ -46,10 +46,58 @@
 /*
  * Lab 3: Your code here for generating entry points for the different traps.
  */
+TRAPHANDLER_NOEC(t_devide_handler, T_DIVIDE)
+TRAPHANDLER_NOEC(t_debug_handler, T_DEBUG)
+TRAPHANDLER_NOEC(t_nmi_handler, T_NMI)
+TRAPHANDLER_NOEC(t_brkpt_handler, T_BRKPT)
+TRAPHANDLER_NOEC(t_oflow_handler, T_OFLOW)
+TRAPHANDLER_NOEC(t_bound_handler, T_BOUND)
+TRAPHANDLER_NOEC(t_illop_handler, T_ILLOP)
+TRAPHANDLER_NOEC(t_device_handler, T_DEVICE)
+TRAPHANDLER(t_dblflt_handler, T_DBLFLT)
+TRAPHANDLER(t_corpoc_handler, T_COPROC)
+TRAPHANDLER(t_tss_handler, T_TSS)
+TRAPHANDLER(t_segnp_handler, T_SEGNP)
+TRAPHANDLER(t_stack_handler, T_STACK)
+TRAPHANDLER(t_gpflt_handler, T_GPFLT)
+TRAPHANDLER(t_pgflt_handler, T_PGFLT)
+TRAPHANDLER(t_res_handler, T_RES)
+TRAPHANDLER_NOEC(t_fperr_handler, T_FPERR)
+TRAPHANDLER_NOEC(t_align_handler, T_ALIGN)
+TRAPHANDLER_NOEC(t_mchk_handler, T_MCHK)
+TRAPHANDLER_NOEC(t_simderr_handler, T_SIMDERR)
+TRAPHANDLER_NOEC(t_syscall_handler, T_SYSCALL)
 
+# .global vectors
+# .long
 
 
 /*
  * Lab 3: Your code here for _alltraps
  */
-
+.globl _alltraps
+_alltraps:
+	# build Trapframe
+	pushl %ds
+	pushl %es
+	pushal
+	
+	# Set up data segments.
+	movw $(GD_KD), %ax
+	movw %ax, %ds
+	movw %ax, %es
+	
+	# Call trap(tf), where tf=%esp
+	pushl %esp
+	call trap
+	
+	# return:
+	addl $0x4, %esp
+	
+.global _trapret
+_trapret:
+	popal
+	popl %es
+	popl %ds
+	addl $0x8, %esp# trapno and errcode
+	iret

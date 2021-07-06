@@ -100,7 +100,7 @@ static void check_page_installed_pgdir(void);
 static void *
 boot_alloc(uint32_t n)
 {
-	static char *nextfree;	// virtual address of next byte of free memory
+	static char *nextfree;	// kernal mapped virtual address of the next byte of free physical memory
 	char *result;
 
 	// Initialize nextfree if this is the first time.
@@ -112,20 +112,20 @@ boot_alloc(uint32_t n)
 		extern char end[];
 		nextfree = ROUNDUP((char *) end, PGSIZE);
 	}
+	// Now nextfree is aligned with PGSIZE
 	// PGSIZE = 4096 bytes
 	// Allocate a chunk large enough to hold 'n' bytes, then update
 	// nextfree.  Make sure nextfree is kept aligned
 	// to a multiple of PGSIZE.
-	// 48 yuan
 	// LAB 2: Your code here.
 	// cprintf("ROUNDUP(0x%x, 0x%x) = 0x%x\n", n, PGSIZE, ROUNDUP(n, PGSIZE));
 	result = nextfree;
-	nextfree += n;
-	nextfree = ROUNDUP((char *) nextfree, PGSIZE);
+	nextfree = ROUNDUP((char*)((uint32_t)nextfree + n), PGSIZE);
 	// PHY = nextfree - KERNBASE
 	if(((uint32_t)nextfree - (uint32_t)KERNBASE)/PGSIZE > npages)
 		panic("PHY MEM OVERFLOWS");
-
+	
+	// cprintf("pmap.c::boot_alloc: alloc 0x%x, return address = 0x%x, nextfree = 0x%x\n", ROUNDUP(n, PGSIZE), result, nextfree);
 	return result;
 }
 
@@ -177,6 +177,13 @@ mem_init(void)
 	//////////////////////////////////////////////////////////////////////
 	// Make 'envs' point to an array of size 'NENV' of 'struct Env'.
 	// LAB 3: Your code here.
+	
+	extern struct Env *envs; // kern/env.c
+	
+	// NENV defined at inc/env.h = 1024
+	
+	envs = (struct Env * ) boot_alloc ( NENV * sizeof(struct Env));
+	// envs is kvm
 
 	//////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
@@ -200,6 +207,7 @@ mem_init(void)
 	//      (ie. perm = PTE_U | PTE_P)
 	//    - pages itself -- kernel RW, user NONE
 	// Your code goes here:
+	
 	// static void boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
 	// cprintf("pages = 0x%x", pages);
 	// panic("just wanna panic\n");
@@ -226,6 +234,10 @@ mem_init(void)
 	//    - the new image at UENVS  -- kernel R, user R
 	//    - envs itself -- kernel RW, user NONE
 	// LAB 3: Your code here.
+	
+	// static void boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
+	// UENVS defined at inc/memlayout.h
+	boot_map_region(kern_pgdir, UENVS, ROUNDUP(NENV * sizeof(struct Env), PGSIZE), PADDR(envs), PTE_U|PTE_P);
 
 	//////////////////////////////////////////////////////////////////////
 	// Use the physical memory that 'bootstack' refers to as the kernel
@@ -314,10 +326,12 @@ page_init(void)
 	// struct PageInfo *pages;		// Physical page state array
 	// static struct PageInfo *page_free_list;	// Free list of physical pages
 	size_t i;
-	uint32_t used_mem = PADDR(kern_pgdir) + PGSIZE + ROUNDUP(npages * 8, PGSIZE);
+	uint32_t used_mem = PADDR((void*)(uint32_t)boot_alloc(0));
 	size_t j = used_mem / PGSIZE;
+	
 	// first phy mem
 	pages[0].pp_ref = 1;
+	pages[0].pp_link = 0;
 	for(i = 1; i < npages_basemem; ++i){
 		// rest of base memory
 		pages[i].pp_ref = 0;
@@ -677,7 +691,26 @@ int
 user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 {
 	// LAB 3: Your code here.
-
+	size_t start_va = ROUNDDOWN((size_t)va, PGSIZE);
+	size_t end_va = ROUNDUP((size_t)va + len, PGSIZE);
+	size_t itr_va;
+	int flag_false = 0;
+	for(itr_va = (size_t) va; itr_va < end_va; itr_va += PGSIZE){
+		if(itr_va >= ULIM){
+			flag_false = 1;
+			user_mem_check_addr = itr_va;
+		}
+		// flag_false = (size_t)itr_va < ULIM? 0 : 1;
+		if(!flag_false){
+			pte_t *pte = pgdir_walk(env -> env_pgdir, (void*)itr_va, 0);
+			if(!pte || !( (uint32_t)pte & (uint32_t)(PTE_P|perm|PTE_U)))
+				flag_false = 1;
+				user_mem_check_addr = itr_va;
+		}
+		if(flag_false)
+			return -E_FAULT;
+		itr_va = ROUNDDOWN(itr_va, PGSIZE);
+	}
 	return 0;
 }
 
@@ -737,7 +770,6 @@ check_page_free_list(bool only_low_memory)
 	for (pp = page_free_list; pp; pp = pp->pp_link)
 		if (PDX(page2pa(pp)) < pdx_limit)
 			memset(page2kva(pp), 0x97, 128);
-
 	first_free_page = (char *) boot_alloc(0);
 	for (pp = page_free_list; pp; pp = pp->pp_link) {
 		// check that we didn't corrupt the free list itself
