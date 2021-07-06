@@ -44,6 +44,7 @@ KERN_SRCFILES := $(wildcard $(KERN_SRCFILES))
 # Binary program images to embed within the kernel.
 # Binary files for LAB3
 KERN_BINFILES :=	user/hello \
+			user/hello2 \
 			user/buggyhello \
 			user/buggyhello2 \
 			user/evilhello \
@@ -107,7 +108,7 @@ $(OBJDIR)/kern/kernel: $(KERN_OBJFILES) $(KERN_BINFILES) kern/kernel.ld \
 	  $(OBJDIR)/.vars.KERN_LDFLAGS
 	@echo + ld $@
 	$(V)$(LD) -o $@ $(KERN_LDFLAGS) $(KERN_OBJFILES) $(GCC_LIB) -b binary $(KERN_BINFILES)
-	$(V)$(OBJDUMP) -S $@ > $@.asm
+	$(V)$(OBJDUMP) -St $@ > $@.asm
 	$(V)$(NM) -n $@ > $@.sym
 
 # How to build the kernel disk image

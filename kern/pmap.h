@@ -71,6 +71,8 @@ void	user_mem_assert(struct Env *env, const void *va, size_t len, int perm);
 static inline physaddr_t
 page2pa(struct PageInfo *pp)
 {
+	if(pp < pages)
+		panic("page2pa called with invalid pp 0x%x", pp);
 	return (pp - pages) << PGSHIFT;
 }
 
@@ -88,6 +90,27 @@ page2kva(struct PageInfo *pp)
 	return KADDR(page2pa(pp));
 }
 
+static inline struct PageInfo*
+kva2page(void* kva)
+{
+	return pa2page(PADDR(kva));
+}
+
+static inline uint32_t *
+PTE2VADDR(uint32_t src)
+{
+	return (uint32_t*)KADDR((physaddr_t)(src & ~0xfff));
+}
+
+static inline pde_t *
+PDE2VADDR(uint32_t src)
+{
+	return (pde_t *)KADDR(src & ~0xfff);	
+}
+
 pte_t *pgdir_walk(pde_t *pgdir, const void *va, int create);
+
+void print_PageTable(pte_t * entry);
+void print_PageTable(pde_t * entry);
 
 #endif /* !JOS_KERN_PMAP_H */

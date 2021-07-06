@@ -36,19 +36,19 @@ static const char * const error_string[MAXERROR] =
  */
 static void
 printnum(void (*putch)(int, void*), void *putdat,
-	 unsigned long long num, unsigned base, int width, int padc)
+	 unsigned long long num, unsigned base, int width, int padc, int color)
 {
 	// first recursively print all preceding (more significant) digits
 	if (num >= base) {
-		printnum(putch, putdat, num / base, base, width - 1, padc);
+		printnum(putch, putdat, num / base, base, width - 1, padc, color);
 	} else {
 		// print any needed pad characters before first digit
 		while (--width > 0)
-			putch(padc, putdat);
+			putch(padc | color, putdat);
 	}
 
 	// then print this (the least significant) digit
-	putch("0123456789abcdef"[num % base], putdat);
+	putch("0123456789abcdef"[num % base] | color, putdat);
 }
 
 // Get an unsigned int of various possible sizes from a varargs list,
@@ -86,15 +86,54 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 {
 	register const char *p;
 	register int ch, err;
+	register int color;
 	unsigned long long num;
 	int base, lflag, width, precision, altflag;
 	char padc;
+
+	color = 0x0700;
 
 	while (1) {
 		while ((ch = *(unsigned char *) fmt++) != '%') {
 			if (ch == '\0')
 				return;
-			putch(ch, putdat);
+			else if (ch == '\033'){
+				if( (ch = *(unsigned char *) fmt++ ) == '['){
+					register int cl;
+					register int msk;
+					switch (ch = *(unsigned char *) fmt++) {// should be 3 or 4 or 0;
+						case '0':
+							cl = 0x0700;
+							msk = 0xff00;
+							break;
+						case '3':
+							msk = 0xf00;
+							cl = *(unsigned char *) fmt++ - '0';
+							cl <<= 8;
+							break;
+						case '4':
+							msk = 0xf000;
+							cl = *(unsigned char *) fmt++ - '0';
+							cl <<= 12;
+							break;
+						default://73
+							cl = 0;
+							msk = 0;
+							break;
+					}
+					if ((ch = *(unsigned char *) fmt++ ) == 'm'){
+						color &= ~msk;
+						color |= cl;
+					}
+					// putch(ch | color, putdat);
+					// // cprintf("case fuck\n");
+					// continue;
+				}
+				else{ }
+					// cprintf("Check succeed\n");
+			}
+			else
+				putch(ch | color, putdat);//putdat = putcnt
 		}
 
 		// Process a %-escape sequence
@@ -159,7 +198,7 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 
 		// character
 		case 'c':
-			putch(va_arg(ap, int), putdat);
+			putch(va_arg(ap, int) | color, putdat);
 			break;
 
 		// error message
@@ -179,21 +218,21 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 				p = "(null)";
 			if (width > 0 && padc != '-')
 				for (width -= strnlen(p, precision); width > 0; width--)
-					putch(padc, putdat);
+					putch(padc | color, putdat);
 			for (; (ch = *p++) != '\0' && (precision < 0 || --precision >= 0); width--)
 				if (altflag && (ch < ' ' || ch > '~'))
-					putch('?', putdat);
+					putch('?' | color, putdat);
 				else
-					putch(ch, putdat);
+					putch(ch | color, putdat);
 			for (; width > 0; width--)
-				putch(' ', putdat);
+				putch(' ' | color, putdat);
 			break;
 
 		// (signed) decimal
 		case 'd':
 			num = getint(&ap, lflag);
 			if ((long long) num < 0) {
-				putch('-', putdat);
+				putch('-' | color, putdat);
 				num = -(long long) num;
 			}
 			base = 10;
@@ -208,15 +247,15 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 		// (unsigned) octal
 		case 'o':
 			// Replace this with your code.
-			putch('X', putdat);
-			putch('X', putdat);
-			putch('X', putdat);
+			num = getint(&ap, lflag);
+			base = 8;
+			goto number;
 			break;
 
 		// pointer
 		case 'p':
-			putch('0', putdat);
-			putch('x', putdat);
+			putch('0' | color, putdat);
+			putch('x' | color, putdat);
 			num = (unsigned long long)
 				(uintptr_t) va_arg(ap, void *);
 			base = 16;
@@ -227,12 +266,12 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 			num = getuint(&ap, lflag);
 			base = 16;
 		number:
-			printnum(putch, putdat, num, base, width, padc);
+			printnum(putch, putdat, num, base, width, padc, color);
 			break;
 
 		// escaped '%' character
 		case '%':
-			putch(ch, putdat);
+			putch(ch | color, putdat);
 			break;
 
 		// unrecognized escape sequence - just print it literally
