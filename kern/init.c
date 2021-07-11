@@ -35,7 +35,7 @@ i386_init(void)
 	trap_init();
 
 	// Lab 4 multiprocessor initialization functions
-	mp_init();
+	mp_init(); // fetch multiprocessor informations from hardware
 	lapic_init();
 
 	// Lab 4 multitasking initialization functions
@@ -54,6 +54,7 @@ i386_init(void)
 	// Touch all you want.
 	ENV_CREATE(user_primes, ENV_TYPE_USER);
 #endif // TEST*
+	
 
 	// Schedule and run the first user environment!
 	sched_yield();
@@ -77,7 +78,7 @@ boot_aps(void)
 	memmove(code, mpentry_start, mpentry_end - mpentry_start);
 
 	// Boot each AP one at a time
-	for (c = cpus; c < cpus + ncpu; c++) {
+	for (c = cpus; c < cpus + ncpu; c++) { // ncpu defined in mpconfig.c, declared at cpu.h
 		if (c == cpus + cpunum())  // We've started already.
 			continue;
 
@@ -96,6 +97,7 @@ void
 mp_main(void)
 {
 	// We are in high EIP now, safe to switch to kern_pgdir 
+	lock_kernel();
 	lcr3(PADDR(kern_pgdir));
 	cprintf("SMP: CPU %d starting\n", cpunum());
 
@@ -110,6 +112,7 @@ mp_main(void)
 	//
 	// Your code here:
 
+	// unlock_kernel();
 	// Remove this after you finish Exercise 6
 	for (;;);
 }

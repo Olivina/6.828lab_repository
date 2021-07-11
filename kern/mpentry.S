@@ -25,13 +25,17 @@
 # This code is similar to boot/boot.S except that
 #    - it does not need to enable A20
 #    - it uses MPBOOTPHYS to calculate absolute addresses of its
-#      symbols, rather than relying on the linker to fill them
+#      symbols, rather than relying on the linker to fill them // this is absolute address?
 
 #define RELOC(x) ((x) - KERNBASE)
 #define MPBOOTPHYS(s) ((s) - mpentry_start + MPENTRY_PADDR)
 
+# since this code has been relocated, the original position could be wrong, so we use MOBOOTPHYS.
+
 .set PROT_MODE_CSEG, 0x8	# kernel code segment selector
 .set PROT_MODE_DSEG, 0x10	# kernel data segment selector
+
+# MPENTRY_PADDR = 0x7000
 
 .code16           
 .globl mpentry_start
@@ -44,11 +48,13 @@ mpentry_start:
 	movw    %ax, %ss
 
 	lgdt    MPBOOTPHYS(gdtdesc)
+	# lgdt    gdtdesc
 	movl    %cr0, %eax
 	orl     $CR0_PE, %eax
 	movl    %eax, %cr0
 
-	ljmpl   $(PROT_MODE_CSEG), $(MPBOOTPHYS(start32))
+	ljmpl   $(PROT_MODE_CSEG), $(MPBOOTPHYS(start32)) # cs, eip
+	# ljmpl   $(PROT_MODE_CSEG), $(start32)
 
 .code32
 start32:
@@ -91,7 +97,18 @@ gdt:
 gdtdesc:
 	.word   0x17				# sizeof(gdt) - 1
 	.long   MPBOOTPHYS(gdt)			# address gdt
+	# .long   gdt
 
 .globl mpentry_end
 mpentry_end:
 	nop
+
+
+	# we notice that for boot.S, the linker fixed the start address at 0x7c00, but mpentry.S doesn't has this setting. So we need to manually set their physical address.
+	# ld flags here:
+	# $(OBJDIR)/boot/boot: $(BOOT_OBJS)
+	# 	@echo + ld boot/boot
+	# 	$(V)$(LD) $(LDFLAGS) -N -e start -Ttext 0x7C00 -o $@.out $^
+	# 	$(V)$(OBJDUMP) -St $@.out >$@.asm
+	# 	$(V)$(OBJCOPY) -S -O binary -j .text $@.out $@
+	# 	$(V)perl boot/sign.pl $(OBJDIR)/boot/boot

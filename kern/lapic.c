@@ -60,6 +60,7 @@ lapic_init(void)
 
 	// lapicaddr is the physical address of the LAPIC's 4K MMIO
 	// region.  Map it in to virtual memory so we can access it.
+	// cprintf("lapic_init: lapicaddr = 0x%x\n", lapicaddr);
 	lapic = mmio_map_region(lapicaddr, 4096);
 
 	// Enable local APIC; set spurious interrupt vector.
@@ -109,6 +110,7 @@ lapic_init(void)
 
 	// Enable interrupts on the APIC (but not on the processor).
 	lapicw(TPR, 0);
+	// cprintf("lapic_init returned\n");
 }
 
 int

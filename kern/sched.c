@@ -29,7 +29,7 @@ sched_yield(void)
 	// below to halt the cpu.
 
 	// LAB 4: Your code here.
-
+	
 	// sched_halt never returns
 	sched_halt();
 }

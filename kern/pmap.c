@@ -213,7 +213,6 @@ mem_init(void)
 	// static void boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
 	// cprintf("pages = 0x%x", pages);
 	// panic("just wanna panic\n");
-	// debugflag = 1;
 	boot_map_region(kern_pgdir, UPAGES, ROUNDUP(npages * sizeof(struct PageInfo), PGSIZE), PADDR(pages), PTE_U | PTE_P);
 	// pde_t *pgdir_tmp;
 
@@ -253,6 +252,7 @@ mem_init(void)
 	//     Permissions: kernel RW, user NONE
 	// Your code goes here:
 	boot_map_region(kern_pgdir, KSTACKTOP - KSTKSIZE, KSTKSIZE, PADDR(bootstack), PTE_W);
+	// boot_map_region(kern_pgdir, KSTACKTOP - PTSIZE, PTSIZE - KSTKSIZE, 0, 0);
 
 	//////////////////////////////////////////////////////////////////////
 	// Map all of physical memory at KERNBASE.
@@ -317,7 +317,16 @@ mem_init_mp(void)
 	//     Permissions: kernel RW, user NONE
 	//
 	// LAB 4: Your code here:
-
+	// pa(i) = percpu_kstacks[i];
+	size_t i;
+	for(i = 0; i < NCPU; ++i){
+		//boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
+		uintptr_t kstacktop_i = KSTACKTOP - i * (KSTKSIZE + KSTKGAP);
+		// cpu[i]'s stack
+		boot_map_region(kern_pgdir, kstacktop_i - KSTKSIZE, KSTKSIZE, PADDR(percpu_kstacks[i]), PTE_W|PTE_P);
+		// cpu[i]'s guard page
+		// boot_map_region(kern_pgdir, kstacktop_i - (KSTKSIZE + KSTKGAP), KSTKGAP, (physaddr_t)0, 0);
+	}
 }
 
 // --------------------------------------------------------------
@@ -338,6 +347,17 @@ page_init(void)
 	// LAB 4:
 	// Change your code to mark the physical page at MPENTRY_PADDR
 	// as in use
+	
+
+	uint32_t used_addr(uint32_t pgcnt){
+		const uint32_t _used_addr[] = {
+			[ MPENTRY_PADDR / PGSIZE ] = 1,
+		};
+		const uint32_t _used_count = ARRAY_SIZE(_used_addr);
+		if(pgcnt >= _used_count)
+			return 0;
+		return _used_addr[pgcnt];
+	};
 
 	// The example code here marks all physical pages as free.
 	// However this is not truly the case.  What memory is free?
@@ -360,14 +380,16 @@ page_init(void)
 	// struct PageInfo *pages;		// Physical page state array
 	// static struct PageInfo *page_free_list;	// Free list of physical pages
 	size_t i;
-	uint32_t used_mem = PADDR((void*)(uint32_t)boot_alloc(0));
-	size_t j = used_mem / PGSIZE;
+	uint32_t start_mem = PADDR((void*)(uint32_t)boot_alloc(0));//boot_alloc(0)returns the next free page but not actually allocs one.
+	size_t j = start_mem / PGSIZE;
 	
 	// first phy mem
 	pages[0].pp_ref = 1;
 	pages[0].pp_link = 0;
 	for(i = 1; i < npages_basemem; ++i){
 		// rest of base memory
+		if(used_addr(i))
+			continue;// I do not increase the MMIO's ref number
 		pages[i].pp_ref = 0;
 		pages[i].pp_link = page_free_list;
 		page_free_list = &pages[i];
@@ -376,10 +398,13 @@ page_init(void)
 		pages[i].pp_ref = 1;
 	}
 	for (; i < npages; i++) {
+		if(used_addr(i))
+			continue;// I do not increase the MMIO's ref number
 		pages[i].pp_ref = 0;
 		pages[i].pp_link = page_free_list;
 		page_free_list = &pages[i];
 	}
+	
 }
 
 //
@@ -541,10 +566,13 @@ boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm
 {
 
 	// Fill this function in
-	struct PageInfo * itor_pp = pa2page(pa);
-	uintptr_t va_tmp = va;
+	// int debugflag = 1;
 	if(debugflag)
 		cprintf("boot_map_region: called with pgdir = 0x%x, va = 0x%x, size = 0x%x, pa = 0x%x\n", pgdir, va, size, pa);
+	struct PageInfo * itor_pp = pa2page(pa);
+	debugflag = 0;
+	uintptr_t va_tmp = va;
+	
 	for(uintptr_t va_tmp = va; va_tmp - va < size; ++itor_pp, va_tmp += PGSIZE){
 		if(debugflag)
 			cprintf("boot_map_region: for loop: page2pa(itor_pp) = 0x%x, va_tmp = 0x%x\n", page2pa(itor_pp), va_tmp);
@@ -714,6 +742,7 @@ mmio_map_region(physaddr_t pa, size_t size)
 	// value will be preserved between calls to mmio_map_region
 	// (just like nextfree in boot_alloc).
 	static uintptr_t base = MMIOBASE;
+	void * ret_addr = (void*) base;
 
 	// Reserve size bytes of virtual memory starting at base and
 	// map physical pages [pa,pa+size) to virtual addresses
@@ -733,7 +762,33 @@ mmio_map_region(physaddr_t pa, size_t size)
 	// Hint: The staff solution uses boot_map_region.
 	//
 	// Your code here:
-	panic("mmio_map_region not implemented");
+	//static void boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm);
+	
+	if(pa % PGSIZE)
+		panic("mmio_map_region: pa not aligned\n");
+	size_t rounded_size = ROUNDUP(size, PGSIZE);
+	if(base + rounded_size >= MMIOLIM)
+		panic("mmio_map_region: overflow >= MMIOLIM\n");
+	if(base + rounded_size < base)
+		panic("mmio_map_region: base uint32 overflow\n");
+	if(debugflag)
+		cprintf("mmio_map_region: pa = 0x%x mapped to va = 0x%x\n", pa, ret_addr);
+	// boot_map_region(kern_pgdir, base, rounded_size, pa, PTE_PCD|PTE_PWT);
+	for(uintptr_t va_tmp = base; va_tmp - base < rounded_size; va_tmp += PGSIZE, pa += PGSIZE){
+		// if(debugflag)
+		// 	cprintf("boot_map_region: for loop: page2pa(itor_pp) = 0x%x, va_tmp = 0x%x\n", page2pa(itor_pp), va_tmp);
+		// pte_t *pgdir_walk(pde_t *pgdir, const void *va, int create);
+		// pte_t * pte = pgdir_walk(pgdir, (char*)va + i * PGSIZE, 1);
+		pte_t * pte = pgdir_walk(kern_pgdir, (void*)va_tmp, 1);
+		* pte = pa | PTE_PCD|PTE_PWT|PTE_P|PTE_W;
+		// if(debugflag)
+		// 	cprintf("boot_map_region: pgdir_walk return: pte = 0x%x, we set *pte = 0x%x\n", pte, *pte);
+		// * (uint32_t*) KADDR( * pgdir_walk(pgdir, (char*)va + i * PGSIZE, 1)) = page2pa(itor_pp) | perm | PTE_P;
+	}
+	
+	base += rounded_size;
+	return ret_addr;
+	// panic("mmio_map_region not implemented");
 }
 
 static uintptr_t user_mem_check_addr;
@@ -1226,6 +1281,7 @@ check_page(void)
 	// check that they don't overlap
 	assert(mm1 + 8192 <= mm2);
 	// check page mappings
+	// debugflag = 1;
 	assert(check_va2pa(kern_pgdir, mm1) == 0);
 	assert(check_va2pa(kern_pgdir, mm1+PGSIZE) == PGSIZE);
 	assert(check_va2pa(kern_pgdir, mm2) == 0);

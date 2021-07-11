@@ -24,14 +24,14 @@ __attribute__ ((aligned(PGSIZE)));
 
 struct mp {             // floating pointer [MP 4.1]
 	uint8_t signature[4];           // "_MP_"
-	physaddr_t physaddr;            // phys addr of MP config table
+	physaddr_t physaddr;            // phys addr of MP config table // struct mpconf*
 	uint8_t length;                 // 1
 	uint8_t specrev;                // [14]
 	uint8_t checksum;               // all bytes must add up to 0
 	uint8_t type;                   // MP system config type
 	uint8_t imcrp;
 	uint8_t reserved[3];
-} __attribute__((__packed__));
+} __attribute__((__packed__)); // this information is set by CPU hardware
 
 struct mpconf {         // configuration table header [MP 4.2]
 	uint8_t signature[4];           // "PCMP"
@@ -98,6 +98,7 @@ mpsearch1(physaddr_t a, int len)
 // 1) in the first KB of the EBDA;
 // 2) if there is no EBDA, in the last KB of system base memory;
 // 3) in the BIOS ROM between 0xE0000 and 0xFFFFF.
+// 1 KB = 1024 bytes, and struct mp can be anywhere in that KB
 static struct mp *
 mpsearch(void)
 {
@@ -176,6 +177,7 @@ mp_init(void)
 		return;
 	ismp = 1;
 	lapicaddr = conf->lapicaddr;
+	// cprintf("lapicaddr = 0x%x\n", lapicaddr);
 
 	for (p = conf->entries, i = 0; i < conf->entry; i++) {
 		switch (*p) {
