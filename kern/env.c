@@ -396,7 +396,7 @@ load_icode(struct Env *e, uint8_t *binary)
 			
 		memset((void*)ph->p_va, 0, ph->p_memsz * sizeof(char));
 		memcpy((void*)ph->p_va, (void*)((uint8_t*)elfhdr + ph->p_offset), ph->p_filesz);
-		cprintf("load ph: va = 0x%x, sz = 0x%x\n", ph->p_va, ph->p_memsz);
+		// cprintf("load ph: va = 0x%x, sz = 0x%x\n", ph->p_va, ph->p_memsz);
 	}
 	// for(; sh < esh; ++sh){
 // 		if(sh->sh_addr == 0)
@@ -578,7 +578,7 @@ env_run(struct Env *e)
 	//	e->env_tf to sensible values.
 
 	// LAB 3: Your code here.
-	if(curenv){// context switch
+	if(curenv && curenv != e){// context switch
 		if(curenv -> env_status == ENV_RUNNING)
 			curenv -> env_status = ENV_RUNNABLE;
 	}

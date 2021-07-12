@@ -46,13 +46,14 @@ i386_init(void)
 
 	// Starting non-boot CPUs
 	boot_aps();
+	lock_kernel();
 
 #if defined(TEST)
 	// Don't touch -- used by grading script!
 	ENV_CREATE(TEST, ENV_TYPE_USER);
 #else
 	// Touch all you want.
-	ENV_CREATE(user_primes, ENV_TYPE_USER);
+	ENV_CREATE(yield, ENV_TYPE_USER);
 #endif // TEST*
 	
 
@@ -97,8 +98,8 @@ void
 mp_main(void)
 {
 	// We are in high EIP now, safe to switch to kern_pgdir 
-	lock_kernel();
 	lcr3(PADDR(kern_pgdir));
+	lock_kernel();
 	cprintf("SMP: CPU %d starting\n", cpunum());
 
 	lapic_init();
@@ -111,9 +112,19 @@ mp_main(void)
 	// only one CPU can enter the scheduler at a time!
 	//
 	// Your code here:
+	
+#if defined(TEST)
+	// Don't touch -- used by grading script!
+	ENV_CREATE(TEST, ENV_TYPE_USER);
+#else
+	// Touch all you want.
+	ENV_CREATE(yield, ENV_TYPE_USER);
+#endif // TEST*
+	
+	sched_yield();
 
-	// unlock_kernel();
 	// Remove this after you finish Exercise 6
+	cprintf("mp_main: yield fuck\n");
 	for (;;);
 }
 

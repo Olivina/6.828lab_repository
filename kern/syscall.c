@@ -86,6 +86,17 @@ sys_exofork(void)
 	// will appear to return 0.
 
 	// LAB 4: Your code here.
+	struct Env * new_env;
+	int ret;
+	if((ret = env_alloc(&new_env, curenv->env_id)) < 0){
+		// perror("sys_exofork: %e", ret);
+		return ret;
+	}
+	envid_t child_envid = new_env -> env_id;
+	memcpy(&new_env->env_tf, &curenv->env_tf, sizeof(struct Trapframe));
+	new_env->env_status = ENV_NOT_RUNNABLE;
+	return new_env->env_id;
+	
 	panic("sys_exofork not implemented");
 }
 
@@ -106,6 +117,17 @@ sys_env_set_status(envid_t envid, int status)
 	// envid's status.
 
 	// LAB 4: Your code here.
+	
+	struct Env * env_to_set;
+	int ret;
+	if((ret = envid2env(envid, &env_to_set, 1)) < 0){
+		// perror("sys_exofork: %e", ret);
+		return ret;
+	}
+	env_to_set->env_status = status;
+	return 0;
+	
+	
 	panic("sys_env_set_status not implemented");
 }
 
@@ -151,6 +173,7 @@ sys_page_alloc(envid_t envid, void *va, int perm)
 	//   allocated!
 
 	// LAB 4: Your code here.
+	
 	panic("sys_page_alloc not implemented");
 }
 
@@ -285,6 +308,9 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 			return (int32_t) sys_getenvid();
 		case SYS_env_destroy:
 			return sys_env_destroy(a1);
+		case SYS_yield:
+			sys_yield();
+			return -1;
 		default:
 			return -E_INVAL;
 	}

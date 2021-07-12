@@ -55,6 +55,7 @@ int	sys_ipc_try_send(envid_t to_env, uint32_t value, void *pg, int perm);
 int	sys_ipc_recv(void *rcv_pg);
 
 // This must be inlined.  Exercise for reader: why?
+// because fork() should save all the register status, but using a real call could modify the registers.
 static inline envid_t __attribute__((always_inline))
 sys_exofork(void)
 {

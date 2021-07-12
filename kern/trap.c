@@ -335,8 +335,10 @@ trap(struct Trapframe *tf)
 
 	// Dispatch based on what type of trap occurred
 	trap_dispatch(tf);
-if (curenv && curenv->env_status == ENV_RUNNING)
+	if (curenv && curenv->env_status == ENV_RUNNING){
+		// unlock_kernel();
 		env_run(curenv);
+	}
 	else
 		sched_yield();
 }
