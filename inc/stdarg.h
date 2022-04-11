@@ -7,7 +7,8 @@ typedef __builtin_va_list va_list;
 
 #define va_start(ap, last) __builtin_va_start(ap, last)
 
-#define va_arg(ap, type) __builtin_va_arg(ap, type)
+#define va_arg(ap, type) __builtin_va_arg(ap, type)// va_arg only translate the memory into specified type.
+// va_arg does not know what type it is, and how many arguments there actually are.
 
 #define va_end(ap) __builtin_va_end(ap)
 

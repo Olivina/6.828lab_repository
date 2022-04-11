@@ -146,6 +146,7 @@ dead:
 	/* break into the kernel monitor */
 	while (1)
 		monitor(NULL);
+	// while(monitor(NULL));
 }
 
 /* like panic, but don't */

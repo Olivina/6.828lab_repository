@@ -42,7 +42,7 @@ bootmain(void)
 	int i;
 
 	// read 1st page off disk
-	readseg((uint32_t) ELFHDR, SECTSIZE*8, 0);
+	readseg((uint32_t) ELFHDR, SECTSIZE*8, 0);// read the first 8 sectors and map into the ELFHDR address in memory.
 
 	// is this a valid ELF?
 	if (ELFHDR->e_magic != ELF_MAGIC)
@@ -81,10 +81,10 @@ readseg(uint32_t pa, uint32_t count, uint32_t offset)
 	end_pa = pa + count;
 
 	// round down to sector boundary
-	pa &= ~(SECTSIZE - 1);
+	pa &= ~(SECTSIZE - 1);// = -(pa % 512)
 
 	// translate from bytes to sectors, and kernel starts at sector 1
-	offset = (offset / SECTSIZE) + 1;
+	offset = (offset / SECTSIZE) + 1;// the number of the sector
 
 	// If this is too slow, we could read lots of sectors at a time.
 	// We'd write more to memory than asked, but it doesn't matter --
@@ -113,18 +113,19 @@ readsect(void *dst, uint32_t offset)
 {
 	// wait for disk to be ready
 	waitdisk();
-
-	outb(0x1F2, 1);		// count = 1
+	//0x1f2: number of sector to read
+	outb(0x1F2, 1);		// count = 1, read 1 sector once a time
+	// 0x1f3-0x1f6: address for LBA mode
 	outb(0x1F3, offset);
 	outb(0x1F4, offset >> 8);
 	outb(0x1F5, offset >> 16);
-	outb(0x1F6, (offset >> 24) | 0xE0);
+	outb(0x1F6, (offset >> 24) | 0xE0);// the combination of these 4 lines is set to locate the sector in the disk.
 	outb(0x1F7, 0x20);	// cmd 0x20 - read sectors
-
+	// 0x1f7: status and command register
 	// wait for disk to be ready
 	waitdisk();
 
 	// read a sector
-	insl(0x1F0, dst, SECTSIZE/4);
+	insl(0x1F0, dst, SECTSIZE/4);// 0x1f0: read port
 }
 

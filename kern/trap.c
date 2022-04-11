@@ -34,26 +34,27 @@ struct Pseudodesc idt_pd = {
 static const char *trapname(int trapno)
 {
 	static const char * const excnames[] = {
-		"Divide error",
-		"Debug",
-		"Non-Maskable Interrupt",
-		"Breakpoint",
-		"Overflow",
-		"BOUND Range Exceeded",
-		"Invalid Opcode",
-		"Device Not Available",
-		"Double Fault",
-		"Coprocessor Segment Overrun",
-		"Invalid TSS",
-		"Segment Not Present",
-		"Stack Fault",
-		"General Protection",
-		"Page Fault",
-		"(unknown trap)",
-		"x87 FPU Floating-Point Error",
-		"Alignment Check",
-		"Machine-Check",
-		"SIMD Floating-Point Exception"
+		[T_DIVIDE] = "Divide error",
+		[T_DEBUG] = "Debug",
+		[T_NMI] = "Non-Maskable Interrupt",
+		[T_BRKPT] = "Breakpoint",
+		[T_OFLOW] = "Overflow",
+		[T_BOUND] = "BOUND Range Exceeded",
+		[T_ILLOP] = "Invalid Opcode",
+		[T_DEVICE] = "Device Not Available",
+		[T_DBLFLT] = "Double Fault",
+		[T_COPROC] = "Coprocessor Segment Overrun",
+		[T_TSS] = "Invalid TSS",
+		[T_SEGNP] = "Segment Not Present",
+		[T_STACK] = "Stack Fault",
+		[T_GPFLT] = "General Protection",
+		[T_PGFLT] = "Page Fault",
+		[T_RES] = "(unknown trap)",
+		[T_FPERR] = "x87 FPU Floating-Point Error",
+		[T_ALIGN] = "Alignment Check",
+		[T_MCHK] = "Machine-Check",
+		[T_SIMDERR] = "SIMD Floating-Point Exception",
+		[T_SYSCALL] = "System Call",
 	};
 
 	if (trapno < ARRAY_SIZE(excnames))
@@ -70,9 +71,49 @@ void
 trap_init(void)
 {
 	extern struct Segdesc gdt[];
-
 	// LAB 3: Your code here.
-
+	extern void t_devide_handler(void);
+	extern void t_debug_handler(void);
+	extern void t_nmi_handler(void);
+	extern void t_brkpt_handler(void);
+	extern void t_oflow_handler(void);
+	extern void t_bound_handler(void);
+	extern void t_illop_handler(void);
+	extern void t_device_handler(void);
+	extern void t_dblflt_handler(void);
+	extern void t_corpoc_handler(void);
+	extern void t_tss_handler(void);
+	extern void t_segnp_handler(void);
+	extern void t_stack_handler(void);
+	extern void t_gpflt_handler(void);
+	extern void t_pgflt_handler(void);
+	extern void t_res_handler(void);
+	extern void t_fperr_handler(void);
+	extern void t_align_handler(void);
+	extern void t_mchk_handler(void);
+	extern void t_simderr_handler(void);
+	extern void t_syscall_handler(void);
+	SETGATE(idt[T_DIVIDE], 0, GD_KT, t_devide_handler, 0);
+	SETGATE(idt[T_DEBUG], 0, GD_KT, t_debug_handler, 3);
+	SETGATE(idt[T_NMI], 0, GD_KT, t_nmi_handler, 0);
+	SETGATE(idt[T_BRKPT], 1, GD_KT, t_brkpt_handler, 3);
+	SETGATE(idt[T_OFLOW], 0, GD_KT, t_oflow_handler, 0);
+	SETGATE(idt[T_BOUND], 0, GD_KT, t_bound_handler, 0);
+	SETGATE(idt[T_ILLOP], 0, GD_KT, t_illop_handler, 0);
+	SETGATE(idt[T_DEVICE], 0, GD_KT, t_device_handler, 0);
+	SETGATE(idt[T_DBLFLT], 0, GD_KT, t_dblflt_handler, 0);
+	SETGATE(idt[T_COPROC], 0, GD_KT, t_corpoc_handler, 0);
+	SETGATE(idt[T_TSS], 0, GD_KT, t_tss_handler, 0);
+	SETGATE(idt[T_SEGNP], 0, GD_KT, t_segnp_handler, 0);
+	SETGATE(idt[T_STACK], 0, GD_KT, t_stack_handler, 0);
+	SETGATE(idt[T_GPFLT], 0, GD_KT, t_gpflt_handler, 0);
+	SETGATE(idt[T_PGFLT], 0, GD_KT, t_pgflt_handler, 0);
+	SETGATE(idt[T_RES], 0, GD_KT, t_res_handler, 0);
+	SETGATE(idt[T_FPERR], 0, GD_KT, t_fperr_handler, 0);
+	SETGATE(idt[T_ALIGN], 0, GD_KT, t_align_handler, 0);
+	SETGATE(idt[T_MCHK], 0, GD_KT, t_mchk_handler, 0);
+	SETGATE(idt[T_SIMDERR], 0, GD_KT, t_simderr_handler, 0);
+	SETGATE(idt[T_SYSCALL], 1, GD_KT, t_syscall_handler, 3);
 	// Per-CPU setup 
 	trap_init_percpu();
 }
@@ -176,6 +217,31 @@ trap_dispatch(struct Trapframe *tf)
 {
 	// Handle processor exceptions.
 	// LAB 3: Your code here.
+	switch(tf -> tf_trapno){
+		case T_DEBUG:
+		case T_BRKPT:
+			monitor(tf);
+			cprintf("return from breakpoint\n");
+			return;
+		case T_PGFLT:
+			page_fault_handler(tf);
+			return;
+		case T_SYSCALL:{
+			struct PushRegs * regs = (struct PushRegs*) tf;
+			if(regs -> reg_eax >= NSYSCALLS){
+				cprintf("invalid syscall number\n");
+				env_destroy(curenv);
+				return;
+			}
+			regs -> reg_eax = syscall(regs -> reg_eax, regs -> reg_edx, 
+									regs -> reg_ecx, regs -> reg_ebx, 
+									regs -> reg_edi, regs -> reg_esi);
+			return;
+		}
+		default:
+			cprintf("unknown fuck 0x%x/%d\n", tf -> tf_trapno, tf -> tf_trapno);
+			break;
+	}
 
 	// Handle spurious interrupts
 	// The hardware sometimes raises these because of noise on the
@@ -269,9 +335,19 @@ page_fault_handler(struct Trapframe *tf)
 	fault_va = rcr2();
 
 	// Handle kernel-mode page faults.
+	uint32_t pl = tf -> tf_cs & 3;
+	if(pl == 0){
+		//kernel page fault
+		panic("[%08x] kernel page fault va 0x%08x ip 0x%08x\n", curenv -> env_id,
+				fault_va, tf -> tf_eip);
+	}
+	// pgflt from user mode
 
 	// LAB 3: Your code here.
-
+	// user_mem_assert(curenv, fault_va, 0, PTE_P|PTE_U);
+	// has the permission
+	 
+	
 	// We've already handled kernel-mode exceptions, so if we get here,
 	// the page fault happened in user mode.
 
