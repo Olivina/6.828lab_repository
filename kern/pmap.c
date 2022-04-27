@@ -143,6 +143,7 @@ boot_alloc(uint32_t n)
 void
 mem_init(void)
 {
+	// for now, physical memory is already remapped above the KERN_BASE
 	uint32_t cr0;
 	size_t n;
 
@@ -173,6 +174,8 @@ mem_init(void)
 	// array.  'npages' is the number of physical pages in memory.  Use memset
 	// to initialize all fields of each struct PageInfo to 0.
 	// Your code goes here:
+
+	// (remapped) physical pages that used to store the PageInfo array (already rounded up)
 	pages = (struct PageInfo *) boot_alloc(npages * sizeof(struct PageInfo));
 	memset(pages, 0, npages * sizeof(struct PageInfo));
 
@@ -184,6 +187,7 @@ mem_init(void)
 	
 	// NENV defined at inc/env.h = 1024
 	
+	// envs: used to store the envs taskinfo array
 	envs = (struct Env * ) boot_alloc ( NENV * sizeof(struct Env));
 	// envs is kvm
 
@@ -193,7 +197,8 @@ mem_init(void)
 	// memory management will go through the page_* functions. In
 	// particular, we can now map memory using boot_map_region
 	// or page_insert
-	page_init();
+	page_init(); // or PageInfo array initialization
+	// boot_alloc doesn't handle the PageInfo array. we need to handle it in page_init
 
 	check_page_free_list(1);
 	check_page_alloc();
@@ -336,7 +341,7 @@ void
 page_init(void)
 {
 	// LAB 4:
-	// Change your code to mark the physical page at MPENTRY_PADDR
+	// Change your code to mark the physical page at MPENTRY_PADDR = 0x7000 = page[6]
 	// as in use
 
 	// The example code here marks all physical pages as free.
@@ -362,11 +367,23 @@ page_init(void)
 	size_t i;
 	uint32_t used_mem = PADDR((void*)(uint32_t)boot_alloc(0));
 	size_t j = used_mem / PGSIZE;
+
+	// uint32_t mp_init_mem = MPENTRY_PADDR;
+	size_t mp_init_pp = MPENTRY_PADDR / PGSIZE;
 	
 	// first phy mem
 	pages[0].pp_ref = 1;
-	pages[0].pp_link = 0;
-	for(i = 1; i < npages_basemem; ++i){
+	pages[0].pp_link = NULL;
+	for(i = 1; i != mp_init_pp ; ++i){
+		// rest of base memory
+		pages[i].pp_ref = 0;
+		pages[i].pp_link = page_free_list;
+		page_free_list = &pages[i];
+	}
+	pages[mp_init_pp].pp_ref = 1;
+	pages[mp_init_pp].pp_link = NULL;
+	i ++;
+	for(; i < npages_basemem; ++i){
 		// rest of base memory
 		pages[i].pp_ref = 0;
 		pages[i].pp_link = page_free_list;
@@ -713,7 +730,7 @@ mmio_map_region(physaddr_t pa, size_t size)
 	// beginning of the MMIO region.  Because this is static, its
 	// value will be preserved between calls to mmio_map_region
 	// (just like nextfree in boot_alloc).
-	static uintptr_t base = MMIOBASE;
+	static uintptr_t base = MMIOBASE; // this will only initialize once
 
 	// Reserve size bytes of virtual memory starting at base and
 	// map physical pages [pa,pa+size) to virtual addresses
@@ -733,7 +750,12 @@ mmio_map_region(physaddr_t pa, size_t size)
 	// Hint: The staff solution uses boot_map_region.
 	//
 	// Your code here:
-	panic("mmio_map_region not implemented");
+	size = ROUNDUP(size, PGSIZE);
+	boot_map_region(kern_pgdir, base, size, pa, PTE_PCD|PTE_PWT|PTE_W);
+	uintptr_t result = base;
+	base += size;
+	return (void*) result;
+	// panic("mmio_map_region not implemented");
 }
 
 static uintptr_t user_mem_check_addr;

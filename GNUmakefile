@@ -122,8 +122,8 @@ all:
 	   $(OBJDIR)/lib/%.o $(OBJDIR)/fs/%.o $(OBJDIR)/net/%.o \
 	   $(OBJDIR)/user/%.o
 
-KERN_CFLAGS := $(CFLAGS) -DJOS_KERNEL -gstabs
-USER_CFLAGS := $(CFLAGS) -DJOS_USER -gstabs
+KERN_CFLAGS := $(CFLAGS) -DJOS_KERNEL -gstabs #"-DTEST=`case $* in *_*) echo $*;; *) echo user_$*;; esac`"
+USER_CFLAGS := $(CFLAGS) -DJOS_USER -gstabs #"-DTEST=`case $* in *_*) echo $*;; *) echo user_$*;; esac`"
 
 # Update .vars.X if variable X has changed since the last make run.
 #
