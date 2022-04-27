@@ -29,6 +29,8 @@ sched_yield(void)
 	// below to halt the cpu.
 
 	// LAB 4: Your code here.
+	int cpu_num = cpunum();
+	envs[cpu_num];
 
 	// sched_halt never returns
 	sched_halt();

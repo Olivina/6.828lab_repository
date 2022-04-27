@@ -281,6 +281,7 @@ trap(struct Trapframe *tf)
 {
 	// The environment may have set DF and some versions
 	// of GCC rely on DF being clear
+	lock_kernel();
 	asm volatile("cld" ::: "cc");
 
 	// Halt the CPU if some other CPU has called panic()
