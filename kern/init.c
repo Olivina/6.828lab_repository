@@ -38,6 +38,7 @@ i386_init(void)
 	// Lab 4 multiprocessor initialization functions
 	mp_init();
 	lapic_init();
+	cprintf("i386_init: lapic_init passed\n");
 
 	// Lab 4 multitasking initialization functions
 	pic_init();

@@ -322,6 +322,15 @@ mem_init_mp(void)
 	//     Permissions: kernel RW, user NONE
 	//
 	// LAB 4: Your code here:
+	int n;
+	for(n = 0; n < NCPU; ++n) {
+		// stack
+		boot_map_region(kern_pgdir, KSTACKTOP - n * (KSTKSIZE + KSTKGAP) - KSTKSIZE,
+						 KSTKSIZE, (physaddr_t) PADDR(percpu_kstacks[n]), PTE_P|PTE_W);
+		// gap
+		// boot_map_region(kern_pgdir, KSTACKTOP - n * (KSTKSIZE + KSTKGAP) - KSTKSIZE,
+		// 				KSTKGAP, 0, 0);
+	}
 
 }
 
@@ -524,7 +533,7 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 	else{
 		if(debugflag){
 			cprintf("pgdir_walk: PDE for PDX(va) = 0x%x exists\npgdir_walk: pde = 0x%x, *pde = 0x%x\n", PDX(va), pde, *pde);
-			cprintf("pgdir_walk: PDE2VADDR(pde) = 0x%x", PDE2VADDR((uint32_t)*pde));
+			cprintf("pgdir_walk: PDE2VADDR(pde) = 0x%x\n", PDE2VADDR((uint32_t)*pde));
 		}
 		// the page directory has this entry
 		// pte_bs = PTE2VADDR(KADDR(*PDE2VADDR(KADDR(pde)))) + PTX(va);
@@ -558,32 +567,52 @@ boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm
 {
 
 	// Fill this function in
-	struct PageInfo * itor_pp = pa2page(pa);
-	uintptr_t va_tmp = va;
 	if(debugflag)
 		cprintf("boot_map_region: called with pgdir = 0x%x, va = 0x%x, size = 0x%x, pa = 0x%x\n", pgdir, va, size, pa);
-	for(uintptr_t va_tmp = va; va_tmp - va < size; ++itor_pp, va_tmp += PGSIZE){
-		if(debugflag)
-			cprintf("boot_map_region: for loop: page2pa(itor_pp) = 0x%x, va_tmp = 0x%x\n", page2pa(itor_pp), va_tmp);
-		// pte_t *pgdir_walk(pde_t *pgdir, const void *va, int create);
-		// pte_t * pte = pgdir_walk(pgdir, (char*)va + i * PGSIZE, 1);
-		pte_t * pte = pgdir_walk(pgdir, (void*)va_tmp, 1);
-		* pte = page2pa(itor_pp) | perm | PTE_P;
-		if(debugflag)
-			cprintf("boot_map_region: pgdir_walk return: pte = 0x%x, we set *pte = 0x%x\n", pte, *pte);
-		// * (uint32_t*) KADDR( * pgdir_walk(pgdir, (char*)va + i * PGSIZE, 1)) = page2pa(itor_pp) | perm | PTE_P;
+
+	uintptr_t	va_start = ROUNDDOWN(va, PGSIZE);
+	uintptr_t	pa_start = ROUNDDOWN(pa, PGSIZE);
+	size_t		rounded_size = (va - va_start) + size;
+
+	// if (va > MMIOLIM) {
+	// 	panic("boot_map_region: invalid va = 0x%x > MMIOLIM\n", va);
+	// }
+
+	for	(uintptr_t 	va_itr = va_start, pa_itr = pa_start;
+					// consider va_itr < va
+				 	va_itr - va_start < rounded_size;
+					va_itr += PGSIZE, pa_itr += PGSIZE)
+	{
+		// cprintf("boot_map_region: map va = 0x%x to pa = 0x%x\n", va_itr, pa_itr);
+		pte_t * pte = pgdir_walk(pgdir, (void*)va_itr, 1);
+		* pte = pa_itr | perm | PTE_P;
 	}
-	if(debugflag){
-		cprintf("boot_map_region:");
-		print_PageTable((uint32_t*)*PDE2VADDR(pgdir[PDX(va)]));
-	}
-	if(debugflag)
-		cprintf("boot_map_region: done with mapping\n");
-	if(debugflag){
-		cprintf("boot_map_region: va = 0x%x, pa = 0x%x, *pte = 0x%x\n", va, pa, *pgdir_walk(pgdir, (char*)va , 1));
-		cprintf("boot_map_region: check: PTX(va) = 0x%x, kern_pgdir[PTX(va)] = 0x%x\n", PTX(va), kern_pgdir[PTX(va)]);
-		cprintf("boot_map_region: kern_pgdir[PTX(va)][PDX(va)] = 0x%x\n", *(uint32_t*)KADDR(kern_pgdir[PTX(va)]));
-	}
+	// cprintf("boot_map_region: for loop done\n");
+	
+	// struct PageInfo * itor_pp = pa2page(pa);
+	// uintptr_t va_tmp = va;
+	// for(uintptr_t va_tmp = va; va_tmp - va < size; ++itor_pp, va_tmp += PGSIZE){
+	// 	if(debugflag)
+	// 		cprintf("boot_map_region: for loop: page2pa(itor_pp) = 0x%x, va_tmp = 0x%x\n", page2pa(itor_pp), va_tmp);
+	// 	// pte_t *pgdir_walk(pde_t *pgdir, const void *va, int create);
+	// 	// pte_t * pte = pgdir_walk(pgdir, (char*)va + i * PGSIZE, 1);
+	// 	pte_t * pte = pgdir_walk(pgdir, (void*)va_tmp, 1);
+	// 	* pte = page2pa(itor_pp) | perm | PTE_P;
+	// 	if(debugflag)
+	// 		cprintf("boot_map_region: pgdir_walk return: pte = 0x%x, we set *pte = 0x%x\n", pte, *pte);
+	// 	// * (uint32_t*) KADDR( * pgdir_walk(pgdir, (char*)va + i * PGSIZE, 1)) = page2pa(itor_pp) | perm | PTE_P;
+	// }
+	// if(debugflag){
+	// 	cprintf("boot_map_region:");
+	// 	print_PageTable((uint32_t*)*PDE2VADDR(pgdir[PDX(va)]));
+	// }
+	// if(debugflag)
+	// 	cprintf("boot_map_region: done with mapping\n");
+	// if(debugflag){
+	// 	cprintf("boot_map_region: va = 0x%x, pa = 0x%x, *pte = 0x%x\n", va, pa, *pgdir_walk(pgdir, (char*)va , 1));
+	// 	cprintf("boot_map_region: check: PTX(va) = 0x%x, kern_pgdir[PTX(va)] = 0x%x\n", PTX(va), kern_pgdir[PTX(va)]);
+	// 	cprintf("boot_map_region: kern_pgdir[PTX(va)][PDX(va)] = 0x%x\n", *(uint32_t*)KADDR(kern_pgdir[PTX(va)]));
+	// }
 
 }
 
@@ -726,6 +755,8 @@ tlb_invalidate(pde_t *pgdir, void *va)
 void *
 mmio_map_region(physaddr_t pa, size_t size)
 {
+	if(debugflag)
+		cprintf("mmio_map_region: called with pa = 0x%x, size = 0x%x\n", pa, size);
 	// Where to start the next region.  Initially, this is the
 	// beginning of the MMIO region.  Because this is static, its
 	// value will be preserved between calls to mmio_map_region

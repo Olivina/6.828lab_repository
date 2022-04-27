@@ -43,10 +43,13 @@ mpentry_start:
 	movw    %ax, %es
 	movw    %ax, %ss
 
-	lgdt    MPBOOTPHYS(gdtdesc)
-	movl    %cr0, %eax
-	orl     $CR0_PE, %eax
-	movl    %eax, %cr0
+	lgdt    MPBOOTPHYS(gdtdesc)	# symbols in this module (kernel) is assigned 
+	movl    %cr0, %eax 			# to very high address (f0xxxxxxxx) specified in
+	orl     $CR0_PE, %eax		# kernel.ld script. But gdtdesc in the first boot 
+	movl    %eax, %cr0			# process is assigned into low address, which is specified
+								# by the compiling arguments (-Ttext 0x7C00), so there's
+								# no need to relocate symbols in the first boot, but needed
+								# here.
 
 	ljmpl   $(PROT_MODE_CSEG), $(MPBOOTPHYS(start32))
 
