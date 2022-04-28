@@ -30,7 +30,13 @@ sched_yield(void)
 
 	// LAB 4: Your code here.
 	int cpu_num = cpunum();
-	envs[cpu_num];
+	// envs[cpu_num];
+	int num_cpus = ncpu;
+	int curr_envid = thiscpu->cpu_env ? thiscpu->cpu_env->env_id : -1;
+	do {
+		curr_envid = (curr_envid + ncpu) % NENV;
+	} while (envs[curr_envid].env_status != ENV_RUNNABLE);
+
 
 	// sched_halt never returns
 	sched_halt();
