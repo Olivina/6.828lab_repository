@@ -69,6 +69,7 @@ sys_env_destroy(envid_t envid)
 static void
 sys_yield(void)
 {
+	warn("kern: sys_yield called\n");
 	sched_yield();
 }
 
@@ -285,6 +286,8 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 			return (int32_t) sys_getenvid();
 		case SYS_env_destroy:
 			return sys_env_destroy(a1);
+		case SYS_yield:
+			sys_yield();
 		default:
 			return -E_INVAL;
 	}

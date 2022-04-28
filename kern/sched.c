@@ -32,13 +32,30 @@ sched_yield(void)
 	int cpu_num = cpunum();
 	// envs[cpu_num];
 	int num_cpus = ncpu;
-	int curr_envid = thiscpu->cpu_env ? thiscpu->cpu_env->env_id : -1;
-	do {
-		curr_envid = (curr_envid + ncpu) % NENV;
-	} while (envs[curr_envid].env_status != ENV_RUNNABLE);
+	int start_envid = thiscpu->cpu_env ? thiscpu->cpu_env->env_id + 1 : 0;
+	int itr_envid;
+	bool second_turn = false;
+	for (	itr_envid = start_envid ;
+		 	envs[itr_envid].env_status != ENV_RUNNABLE ; 
+		 	itr_envid = (itr_envid + 1 )% NENV ) {
+		if (itr_envid == start_envid ) {
+			if(second_turn)
+				goto no_runnable;
+			else 
+				second_turn = true;
+		}
+	}
+	// we get the first runnable env.
+	cprintf("found runnable envid = %d\n", itr_envid);
+	struct Env * env_to_run;
+	envid2env(itr_envid, &env_to_run, false);
+	env_run(env_to_run);
 
+	warn("should not reach here!\n");
 
+no_runnable:
 	// sched_halt never returns
+	cprintf("%s:%d: no runnable!\n", __FILE__, __LINE__);
 	sched_halt();
 }
 
