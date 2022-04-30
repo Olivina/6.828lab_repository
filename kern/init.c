@@ -57,10 +57,10 @@ i386_init(void)
 	ENV_CREATE(user_primes, ENV_TYPE_USER);
 
 #endif // TEST*
-	ENV_CREATE(TEST, ENV_TYPE_USER);
-	ENV_CREATE(TEST, ENV_TYPE_USER);
-	ENV_CREATE(TEST, ENV_TYPE_USER);
-	ENV_CREATE(TEST, ENV_TYPE_USER);
+	// ENV_CREATE(TEST, ENV_TYPE_USER);
+	// ENV_CREATE(TEST, ENV_TYPE_USER);
+	// ENV_CREATE(TEST, ENV_TYPE_USER);
+	// ENV_CREATE(TEST, ENV_TYPE_USER);
 	// Schedule and run the first user environment!
 	// lock_kernel();
 	sched_yield();
