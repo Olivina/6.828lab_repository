@@ -111,12 +111,14 @@ invlpg(void *addr)
 	asm volatile("invlpg (%0)" : : "r" (addr) : "memory");
 }
 
+// load interrupt vector 
 static inline void
 lidt(void *p)
 {
 	asm volatile("lidt (%0)" : : "r" (p));
 }
 
+// load gdt
 static inline void
 lgdt(void *p)
 {
@@ -129,12 +131,14 @@ lldt(uint16_t sel)
 	asm volatile("lldt %0" : : "r" (sel));
 }
 
+// task register, specify which gdt entry the cpu should use.
 static inline void
 ltr(uint16_t sel)
 {
 	asm volatile("ltr %0" : : "r" (sel));
 }
 
+// cr0 is the privilege register
 static inline void
 lcr0(uint32_t val)
 {
@@ -157,6 +161,7 @@ rcr2(void)
 	return val;
 }
 
+// cr3 is the pgdir register
 static inline void
 lcr3(uint32_t val)
 {

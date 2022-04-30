@@ -31,8 +31,8 @@
  *                     |~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~| RW/--
  *                     |                              | RW/--
  *                     |   Remapped Physical Memory   | RW/--
- *                     |                              | RW/--
- *    KERNBASE, ---->  +------------------------------+ 0xf0000000      --+
+ *                     |                              | RW/--		kernel instructions are above the KERNBASE
+ *    KERNBASE, ---->  +------------------------------+ 0xf0000000      --+		kernel stacks are below the KERNBASE
  *    KSTACKTOP        |     CPU0's Kernel Stack      | RW/--  KSTKSIZE   |
  *                     | - - - - - - - - - - - - - - -|                   |
  *                     |      Invalid Memory (*)      | --/--  KSTKGAP    |

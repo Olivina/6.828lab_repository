@@ -17,4 +17,12 @@ struct Eipdebuginfo {
 
 int debuginfo_eip(uintptr_t eip, struct Eipdebuginfo *info);
 
+typedef struct {
+	const uint32_t ebp;
+	const uint32_t eip;
+	const uint32_t arg[5];
+} Stackframe;
+
+void print_caller(uintptr_t eip);
+
 #endif

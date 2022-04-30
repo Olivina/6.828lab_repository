@@ -41,21 +41,25 @@ struct Segdesc gdt[NCPU + 5] =
 	// 0x0 - unused (always faults -- for trapping NULL far pointers)
 	SEG_NULL,
 
-	// 0x8 - kernel code segment
+	// 0x8 - kernel code segment [ >> 3 = 1]
 	[GD_KT >> 3] = SEG(STA_X | STA_R, 0x0, 0xffffffff, 0),
 
-	// 0x10 - kernel data segment
+	// 0x10 - kernel data segment [ >> 3 = 2]
 	[GD_KD >> 3] = SEG(STA_W, 0x0, 0xffffffff, 0),
 
-	// 0x18 - user code segment
+	// 0x18 - user code segment [ >> 3 = 3]
 	[GD_UT >> 3] = SEG(STA_X | STA_R, 0x0, 0xffffffff, 3),
 
-	// 0x20 - user data segment
+	// 0x20 - user data segment [ >> 3 = 4]
 	[GD_UD >> 3] = SEG(STA_W, 0x0, 0xffffffff, 3),
 
 	// Per-CPU TSS descriptors (starting from GD_TSS0) are initialized
 	// in trap_init_percpu()
+	// 0x28 - CPU0 [ >> 3 = 5]
 	[GD_TSS0 >> 3] = SEG_NULL
+	// 0x30 - CPU1 [ >> 3 = 6]
+	// 0x38 - CPU2 [ >> 3 = 7]
+	// 0x40 - CPU4 [ >> 3 = 8]
 };
 
 struct Pseudodesc gdt_pd = {
@@ -78,6 +82,7 @@ envid2env(envid_t envid, struct Env **env_store, bool checkperm)
 	struct Env *e;
 
 	// If envid is zero, return the current environment.
+	// why???
 	if (envid == 0) {
 		*env_store = curenv;
 		return 0;
@@ -396,7 +401,7 @@ load_icode(struct Env *e, uint8_t *binary)
 			
 		memset((void*)ph->p_va, 0, ph->p_memsz * sizeof(char));
 		memcpy((void*)ph->p_va, (void*)((uint8_t*)elfhdr + ph->p_offset), ph->p_filesz);
-		cprintf("load ph: va = 0x%x, sz = 0x%x\n", ph->p_va, ph->p_memsz);
+		// cprintf("load ph: va = 0x%x, sz = 0x%x\n", ph->p_va, ph->p_memsz);
 	}
 	// for(; sh < esh; ++sh){
 // 		if(sh->sh_addr == 0)
@@ -467,7 +472,8 @@ env_free(struct Env *e)
 		lcr3(PADDR(kern_pgdir));
 
 	// Note the environment's demise.
-	cprintf("[%08x] free env %08x\n", curenv ? curenv->env_id : 0, e->env_id);
+	// cprintf("[%08x] free env %08x\n", curenv ? curenv->env_id : 0, e->env_id);
+	hprintf("[%08x] free env %08x\n", curenv ? curenv->env_id : 0, e->env_id);
 
 	// Flush all mapped pages in the user portion of the address space
 	static_assert(UTOP % PTSIZE == 0);
@@ -539,7 +545,7 @@ env_pop_tf(struct Trapframe *tf)
 {
 	// Record the CPU we are running on for user-space debugging
 	curenv->env_cpunum = cpunum();
-
+	hprintf("enter env[0x%x]", curenv->env_id);
 	unlock_kernel();
 
 	asm volatile(
@@ -590,6 +596,7 @@ env_run(struct Env *e)
 	lcr3(PADDR(curenv -> env_pgdir));
 	env_pop_tf(&curenv -> env_tf);
 
+	// should not reach here!
 	panic("env_run not yet implemented");
 }
 

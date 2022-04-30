@@ -58,9 +58,11 @@ sys_env_destroy(envid_t envid)
 	if ((r = envid2env(envid, &e, 1)) < 0)
 		return r;
 	if (e == curenv)
-		cprintf("[%08x] exiting gracefully\n", curenv->env_id);
+		// cprintf("[%08x] exiting gracefully\n", curenv->env_id);
+		hprintf("[%08x] exiting gracefully\n", curenv->env_id);
 	else
-		cprintf("[%08x] destroying %08x\n", curenv->env_id, e->env_id);
+		// cprintf("[%08x] destroying %08x\n", curenv->env_id, e->env_id);
+		hprintf("[%08x] destroying %08x\n", curenv->env_id, e->env_id);
 	env_destroy(e);
 	return 0;
 }
@@ -69,7 +71,7 @@ sys_env_destroy(envid_t envid)
 static void
 sys_yield(void)
 {
-	warn("kern: sys_yield called\n");
+	curenv->env_status = ENV_RUNNABLE;
 	sched_yield();
 }
 

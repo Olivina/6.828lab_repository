@@ -61,8 +61,10 @@ void
 spin_lock(struct spinlock *lk)
 {
 #ifdef DEBUG_SPINLOCK
-	if (holding(lk))
+	if (holding(lk)){
+		print_caller(read_ebp());
 		panic("CPU %d cannot acquire %s: already holding", cpunum(), lk->name);
+	}
 #endif
 
 	// The xchg is atomic.

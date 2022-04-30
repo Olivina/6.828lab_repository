@@ -11,6 +11,9 @@
 #include <kern/monitor.h>
 #include <kern/kdebug.h>
 #include <kern/trap.h>
+// for cpunum()
+#include <kern/cpu.h>
+// #include <kern/env.h>
 
 #define CMDBUF_SIZE	80	// enough for one VGA text line
 
@@ -21,11 +24,7 @@ struct Command {
 	// return -1 to force monitor to exit
 	int (*func)(int argc, char** argv, struct Trapframe* tf);
 };
-typedef struct Stackframe {
-	const uint32_t ebp;
-	const uint32_t eip;
-	const uint32_t arg[5];
-} Stackframe;
+
 
 int mon_fu(int argc, char ** argv, struct Trapframe *tf);
 int mon_shut(int argc, char ** argv, struct Trapframe *tf);
@@ -33,6 +32,7 @@ int mon_print(int argc, char ** argv, struct Trapframe *tf);
 int mon_warn(int argc, char ** argv, struct Trapframe *tf);
 int mon_continue(int argc, char ** argv, struct Trapframe *tf);
 int mon_stepi(int argc, char ** argv, struct Trapframe *tf);
+int mon_backtrace_cpu(int argc, char ** argv, struct Trapframe *tf);
 
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
@@ -44,9 +44,22 @@ static struct Command commands[] = {
 	{ "warntest", "test warn function", mon_warn },
 	{ "continue", "continue executing monitor", mon_continue},
 	{ "stepi", "next instruction", mon_stepi},
+	{ "cpunum", "backtrace all cpu", mon_backtrace_cpu },
 };
 
 /***** Implementations of basic kernel monitor commands *****/
+
+int mon_backtrace_cpu(int argc, char ** argv, struct Trapframe *tf)
+{
+	// cprintf("cpunum = %d\n", cpunum());
+	// hprintf("");
+	for (int n = 0; n < ncpu; ++n)
+	{
+		uintptr_t ebp = cpus[n].cpu_ts.ts_ebp;
+		print_caller(ebp);
+	}
+	return 0;
+}
 
 int mon_continue(int argc, char ** argv, struct Trapframe *tf){
 	tf -> tf_eflags &= ~FL_TF;

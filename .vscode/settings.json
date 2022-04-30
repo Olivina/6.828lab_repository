@@ -140,6 +140,10 @@
         "syscall.h": "c",
         "sched.h": "c",
         "x86.h": "c",
-        "pmap.h": "c"
+        "pmap.h": "c",
+        "type_traits": "c",
+        "kdebug.h": "c",
+        "cpu.h": "c",
+        "lib.h": "c"
     }
 }

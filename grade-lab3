@@ -8,8 +8,8 @@ r = Runner(save("jos.out"),
 @test(10)
 def test_divzero():
     r.user_test("divzero")
-    r.match('Incoming TRAP frame at 0xefffff..',
-            'TRAP frame at 0xf.......',
+    r.match('Incoming TRAP frame at 0xefffff..', # kern stack
+            'TRAP frame at 0xf.......', # kern data
             '  trap 0x00000000 Divide error',
             '  eip  0x008.....',
             '  ss   0x----0023',

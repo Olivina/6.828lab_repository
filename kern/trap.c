@@ -146,16 +146,14 @@ trap_init_percpu(void)
 	// user space on that CPU.
 	//
 	// LAB 4: Your code here:
-	int n;
-	for ( n = 0; n < NCPU; ++n )
-	{
-		cpus[n].cpu_ts.ts_esp0 = KSTACKTOP - n * (KSTKSIZE + KSTKGAP);
-		cpus[n].cpu_ts.ts_ss0 = GD_KD;
-		cpus[n].cpu_ts.ts_iomb = sizeof(struct Taskstate);
-		gdt[(GD_TSS0 >> 3) + n] = SEG16(STS_T32A, (uint32_t) (&(cpus[n].cpu_ts)),
-										sizeof(struct Taskstate) - 1, 0);
-		gdt[(GD_TSS0 >> 3) + n].sd_s = 0;
-	}
+
+	thiscpu->cpu_ts.ts_esp0 = KSTACKTOP - cpunum() * (KSTKSIZE + KSTKGAP);
+	thiscpu->cpu_ts.ts_ss0 = GD_KD;
+	thiscpu->cpu_ts.ts_iomb = sizeof(struct Taskstate);
+	gdt[(GD_TSS0 >> 3) + cpunum()] = SEG16(STS_T32A, (uint32_t) (&(thiscpu->cpu_ts)),
+									sizeof(struct Taskstate) - 1, 0);
+	gdt[(GD_TSS0 >> 3) + cpunum()].sd_s = 0;
+
 
 	// // Setup a TSS so that we get the right stack
 	// // when we trap to the kernel.
@@ -170,7 +168,8 @@ trap_init_percpu(void)
 
 	// Load the TSS selector (like other segment selectors, the
 	// bottom three bits are special; we leave them 0)
-	ltr(GD_TSS0);
+	// CPU0 => 0x28, CPU1 => 0x30, CPU2 => 0x38, ...
+	ltr(GD_TSS0 + (cpunum() << 3) );
 
 	// Load the IDT
 	lidt(&idt_pd);
@@ -227,7 +226,12 @@ trap_dispatch(struct Trapframe *tf)
 {
 	// Handle processor exceptions.
 	// LAB 3: Your code here.
+	// cprintf("Incoming TRAP frame at 0x%x\n", tf);
 	switch(tf -> tf_trapno){
+		case T_DIVIDE:
+		// divide zero
+			cprintf("kernel trap: divide zero\n");
+			break;
 		case T_DEBUG:
 		case T_BRKPT:
 			monitor(tf);
@@ -272,7 +276,7 @@ trap_dispatch(struct Trapframe *tf)
 		panic("unhandled trap in kernel");
 	else {
 		env_destroy(curenv);
-		return;
+		return;// destroy will yield automatically. Should not reach here.
 	}
 }
 
@@ -282,6 +286,10 @@ trap(struct Trapframe *tf)
 	// The environment may have set DF and some versions
 	// of GCC rely on DF being clear
 	lock_kernel();
+	hprintf("trap from env[0x%x], reason = %s", curenv? 0 : curenv->env_id, trapname(tf->tf_trapno));
+	if (tf->tf_trapno == T_SYSCALL) {
+		hprintf("syscall name = %s", syscallname(tf->tf_regs.reg_eax));
+	}
 	asm volatile("cld" ::: "cc");
 
 	// Halt the CPU if some other CPU has called panic()

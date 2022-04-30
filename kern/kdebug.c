@@ -19,6 +19,18 @@ struct UserStabData {
 	const char *stabstr_end;
 };
 
+void print_caller(uintptr_t ebp)
+{
+	Stackframe * sf = (Stackframe*) ebp;// point to current ebp;
+	struct Eipdebuginfo eif;
+	int limit = 10;
+	cprintf("calling chain:\n");
+	do {
+		debuginfo_eip((uintptr_t)sf->eip, &eif);
+		cprintf("\t=> %s\n", eif.eip_fn_name);
+	} while((sf = (Stackframe*) sf->ebp ) != NULL && --limit > 0);
+}
+
 
 // stab_binsearch(stabs, region_left, region_right, type, addr)
 //

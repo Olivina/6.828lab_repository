@@ -10,8 +10,9 @@ umain(int argc, char **argv)
 	cprintf("Hello, I am environment %08x.\n", thisenv->env_id);
 	for (i = 0; i < 5; i++) {
 		sys_yield();
-		cprintf("Back in environment %08x, iteration %d.\n",
-			thisenv->env_id, i);
+		cprintf("cpu[%d]: Back in environment %08x, iteration %d.\n",
+			thisenv->env_cpunum, thisenv->env_id, i);
 	}
-	cprintf("All done in environment %08x.\n", thisenv->env_id);
+	// cprintf("All done in environment %08x.\n", thisenv->env_id);
+	cprintf("cpu[%d]: All done in environment %08x.\n", thisenv->env_cpunum, thisenv->env_id);
 }
