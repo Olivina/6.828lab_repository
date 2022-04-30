@@ -60,7 +60,9 @@ i386_init(void)
 	ENV_CREATE(TEST, ENV_TYPE_USER);
 	ENV_CREATE(TEST, ENV_TYPE_USER);
 	ENV_CREATE(TEST, ENV_TYPE_USER);
+	ENV_CREATE(TEST, ENV_TYPE_USER);
 	// Schedule and run the first user environment!
+	// lock_kernel();
 	sched_yield();
 }
 
@@ -102,8 +104,9 @@ mp_main(void)
 {
 	// We are in high EIP now, safe to switch to kern_pgdir 
 	lcr3(PADDR(kern_pgdir));
+	// lock_kernel();//my
 	cprintf("SMP: CPU %d starting\n", cpunum());
-
+	// unlock_kernel();//my
 	lapic_init();
 	env_init_percpu();
 	trap_init_percpu();

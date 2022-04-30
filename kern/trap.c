@@ -280,16 +280,40 @@ trap_dispatch(struct Trapframe *tf)
 	}
 }
 
+const char *syscallname(int syscallno)
+{
+	static const char * const excnames[] = {
+		[SYS_cputs] = "SYS_cputs",
+		[SYS_cgetc] = "SYS_cgetc",
+		[SYS_getenvid] = "SYS_getenvid",
+		[SYS_env_destroy] = "SYS_env_destroy",
+		[SYS_page_alloc] = "SYS_page_alloc",
+		[SYS_page_map] = "SYS_page_map",
+		[SYS_page_unmap] = "SYS_page_unmap",
+		[SYS_exofork] = "SYS_exofork",
+		[SYS_env_set_status] = "SYS_env_set_status",
+		[SYS_env_set_pgfault_upcall] = "SYS_env_set_pgfault_upcall",
+		[SYS_yield] = "SYS_yield",
+		[SYS_ipc_try_send] = "SYS_ipc_try_send",
+		[SYS_ipc_recv] = "SYS_ipc_recv",
+		// NSYSCALLS
+	};
+
+	if (syscallno < sizeof(excnames) / sizeof(excnames[0]))
+		return excnames[syscallno];
+	return "(unknown syscall)";
+}
+
 void
 trap(struct Trapframe *tf)
 {
 	// The environment may have set DF and some versions
 	// of GCC rely on DF being clear
 	lock_kernel();
-	hprintf("trap from env[0x%x], reason = %s", curenv? 0 : curenv->env_id, trapname(tf->tf_trapno));
-	if (tf->tf_trapno == T_SYSCALL) {
-		hprintf("syscall name = %s", syscallname(tf->tf_regs.reg_eax));
-	}
+	// hprintf("trap from env[0x%x], reason = %s", curenv? curenv->env_id : 0, trapname(tf->tf_trapno));
+	// if (tf->tf_trapno == T_SYSCALL) {
+	// 	hprintf("syscall name = %s", syscallname(tf->tf_regs.reg_eax));
+	// }
 	asm volatile("cld" ::: "cc");
 
 	// Halt the CPU if some other CPU has called panic()

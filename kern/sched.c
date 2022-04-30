@@ -37,6 +37,7 @@ sched_yield(void)
 	int start_envid = thiscpu->cpu_env ? thiscpu->cpu_env->env_id + 1 : 0;
 	int itr_envid;
 	bool second_turn = false;
+	// lock_kernel();
 	for (	itr_envid = start_envid ;
 		 	envs[itr_envid].env_status != ENV_RUNNABLE ; 
 		 	itr_envid = (itr_envid + 1 )% NENV ) {
@@ -59,7 +60,6 @@ sched_yield(void)
 
 no_runnable:
 	// sched_halt never returns
-	// cprintf("%s:%d: cpu[%d]: no runnable!\n", __FILE__, __LINE__, cpunum());
 	sched_halt();
 }
 
@@ -69,8 +69,9 @@ no_runnable:
 void
 sched_halt(void)
 {
-	hprintf("enter sched_halt");
-	print_caller(read_ebp());
+	// hprintf("enter sched_halt");
+	// print_caller(read_ebp());
+	// hprintf("after calling chain");
 	int i;
 
 	// For debugging and testing purposes, if there are no runnable
@@ -81,10 +82,10 @@ sched_halt(void)
 		     envs[i].env_status == ENV_DYING))
 			break;
 	}
-	hprintf("i = %d", i);
+	// hprintf("i = %d", i);
 	if (i == NENV) {
 		// cprintf("No runnable environments in the system!\n");
-		hprintf("No runnable environments in the system!\n");
+		cprintf("No runnable environments in the system!\n");
 		while (1)
 			monitor(NULL);
 	}
@@ -99,7 +100,7 @@ sched_halt(void)
 	xchg(&thiscpu->cpu_status, CPU_HALTED);
 
 	// Release the big kernel lock as if we were "leaving" the kernel
-	hprintf("halt");
+	// hprintf("halt");
 	unlock_kernel();
 
 	// Reset stack pointer, enable interrupts and then halt.
