@@ -20,7 +20,7 @@ static struct Taskstate ts;
  * a saved trapframe and printing the current trapframe and print some
  * additional information in the latter case.
  */
-static struct Trapframe *last_tf;
+static struct Trapframe *last_tf; // in case happens a double fault
 
 /* Interrupt descriptor table.  (Must be built at run time because
  * shifted function addresses can't be represented in relocation records.)
@@ -250,6 +250,7 @@ trap_dispatch(struct Trapframe *tf)
 			regs -> reg_eax = syscall(regs -> reg_eax, regs -> reg_edx, 
 									regs -> reg_ecx, regs -> reg_ebx, 
 									regs -> reg_edi, regs -> reg_esi);
+			// return value has already been written into eax
 			return;
 		}
 		default:
@@ -307,9 +308,11 @@ const char *syscallname(int syscallno)
 void
 trap(struct Trapframe *tf)
 {
+	// entrance of the kernel
+
 	// The environment may have set DF and some versions
 	// of GCC rely on DF being clear
-	lock_kernel();
+	// lock_kernel();
 	// hprintf("trap from env[0x%x], reason = %s", curenv? curenv->env_id : 0, trapname(tf->tf_trapno));
 	// if (tf->tf_trapno == T_SYSCALL) {
 	// 	hprintf("syscall name = %s", syscallname(tf->tf_regs.reg_eax));
@@ -335,10 +338,13 @@ trap(struct Trapframe *tf)
 		// Acquire the big kernel lock before doing any
 		// serious kernel work.
 		// LAB 4: Your code here.
+		lock_kernel();
 		assert(curenv);
 
 		// Garbage collect if current enviroment is a zombie
-		if (curenv->env_status == ENV_DYING) {
+		if (curenv->env_status == ENV_DYING) { 
+			// how could that possible?
+			// does that means that in scheduling we need to enter an env even if it's ENV_DYING?
 			env_free(curenv);
 			curenv = NULL;
 			sched_yield();

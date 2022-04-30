@@ -69,7 +69,7 @@ sys_env_destroy(envid_t envid)
 
 // Deschedule current environment and pick a different one to run.
 static void
-sys_yield(void)
+sys_yield(void) 
 {
 	curenv->env_status = ENV_RUNNABLE;
 	sched_yield();
@@ -88,8 +88,16 @@ sys_exofork(void)
 	// from the current environment -- but tweaked so sys_exofork
 	// will appear to return 0.
 
-	// LAB 4: Your code here.
 	panic("sys_exofork not implemented");
+	struct Env * new_env;
+	int errno;
+	
+	if ((errno = env_alloc(&new_env, curenv->env_id)) < 0) {
+		return errno;
+	}
+
+
+	// LAB 4: Your code here.
 }
 
 // Set envid's env_status to status, which must be ENV_RUNNABLE
@@ -287,9 +295,25 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		case SYS_getenvid:
 			return (int32_t) sys_getenvid();
 		case SYS_env_destroy:
-			return sys_env_destroy(a1);
+			return (int32_t) sys_env_destroy(a1);
+		case SYS_page_alloc:
+			return (int32_t) sys_page_alloc((envid_t)a1, (void*)a2, (int)a3);
+		case SYS_page_map:
+			return (int32_t) sys_page_map((envid_t)a1, (void*)a2, (envid_t)a3, (void*)a4, (int)a5);
+		case SYS_page_unmap:
+			return sys_page_unmap((envid_t)a1, (void*)a2);
+		case SYS_exofork:
+			return (int32_t) sys_exofork();
+		case SYS_env_set_status:
+			return sys_env_set_status((envid_t)a1, (int)a2);
+		case SYS_env_set_pgfault_upcall:
+			return sys_env_set_pgfault_upcall((envid_t)a1, (void*)a2);
 		case SYS_yield:
 			sys_yield();
+		case SYS_ipc_try_send:
+			return sys_ipc_try_send((envid_t)a1, (uint32_t)a2, (void*)a3, (unsigned int)a4);
+		case SYS_ipc_recv:
+			return sys_ipc_recv((void*)a1);
 		default:
 			return -E_INVAL;
 	}
