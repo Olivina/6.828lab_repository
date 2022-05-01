@@ -88,7 +88,7 @@ sys_exofork(void)
 	// from the current environment -- but tweaked so sys_exofork
 	// will appear to return 0.
 
-	panic("sys_exofork not implemented");
+	// panic("sys_exofork not implemented");
 	struct Env * new_env;
 	int errno;
 	
@@ -96,6 +96,13 @@ sys_exofork(void)
 		return errno;
 	}
 
+	// copy the regs state
+	memcpy(&new_env->env_tf, &curenv->env_tf, sizeof(struct Trapframe));
+	new_env -> env_tf.tf_regs.reg_eax = 0;
+	new_env -> env_status = ENV_NOT_RUNNABLE;
+
+	// return child's envid
+	return new_env -> env_id;
 
 	// LAB 4: Your code here.
 }
@@ -115,9 +122,21 @@ sys_env_set_status(envid_t envid, int status)
 	// You should set envid2env's third argument to 1, which will
 	// check whether the current environment has permission to set
 	// envid's status.
+	struct Env * env;
+	int errno;
+	if ((errno = envid2env(envid, &env, 1) < 0)) {
+		return errno;
+	}
+
+	if (status != ENV_RUNNABLE && status != ENV_NOT_RUNNABLE)
+		return -E_INVAL;
+	
+	env->env_status = status;
+
+	return 0;
 
 	// LAB 4: Your code here.
-	panic("sys_env_set_status not implemented");
+	// panic("sys_env_set_status not implemented");
 }
 
 // Set the page fault upcall for 'envid' by modifying the corresponding struct
@@ -161,8 +180,39 @@ sys_page_alloc(envid_t envid, void *va, int perm)
 	//   If page_insert() fails, remember to free the page you
 	//   allocated!
 
+	struct Env *env;
+	struct PageInfo *p;
+	int errno;
+
+	// check whether the env exists
+	if( (errno = envid2env(envid, &env, 1) ) < 0 ){
+		return errno;
+	}
+	// not aligned or >= UTOP
+	if (((uint32_t)va) % PGSIZE || ((uint32_t)va) >= UTOP) {
+		return -E_INVAL;
+	}
+	// check if PTE_U and PTE_P set
+	if(perm & (PTE_U|PTE_P) != (PTE_U|PTE_P)) {
+		return -E_INVAL;
+	}
+	// check if use other permissions
+	if (perm & (~(PTE_U|PTE_P|PTE_W|PTE_AVAIL))) {
+		return -E_INVAL;
+	}
+	if ( ( p = page_alloc(perm) ) == NULL) {
+		return -E_NO_MEM;
+	}
+	if( ( errno = page_insert(env->env_pgdir, p, va, perm) ) < 0 ) {
+		page_free(p);
+		return -E_NO_MEM;
+	}
+
+	return 0;
+
+
 	// LAB 4: Your code here.
-	panic("sys_page_alloc not implemented");
+	// panic("sys_page_alloc not implemented");
 }
 
 // Map the page of memory at 'srcva' in srcenvid's address space
@@ -191,6 +241,9 @@ sys_page_map(envid_t srcenvid, void *srcva,
 	//   parameters for correctness.
 	//   Use the third argument to page_lookup() to
 	//   check the current permissions on the page.
+	struct Env *src, *dst;
+	struct PageInfo *p;
+	int errno;
 
 	// LAB 4: Your code here.
 	panic("sys_page_map not implemented");

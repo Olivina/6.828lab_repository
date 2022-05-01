@@ -73,7 +73,7 @@ no_runnable:
 	for (itr_envid = 0; itr_envid < NENV; ++itr_envid) {
 		if (envs[itr_envid].env_status == ENV_FREE)
 			continue;
-		hprintf("envs[%d]: %s", itr_envid, env_status_name[envs[itr_envid].env_status]);
+		hprintf("envs[0x%x]: %s", itr_envid + 4096, env_status_name[envs[itr_envid].env_status]);
 	}
 	sched_halt();
 }
@@ -115,7 +115,7 @@ sched_halt(void)
 	xchg(&thiscpu->cpu_status, CPU_HALTED);
 
 	// Release the big kernel lock as if we were "leaving" the kernel
-	// hprintf("halt");
+	hprintf("halt");
 	unlock_kernel();
 
 	// Reset stack pointer, enable interrupts and then halt.

@@ -202,6 +202,7 @@ env_setup_vm(struct Env *e)
 	p -> pp_ref ++;
 	extern pde_t *kern_pgdir; // pde_t *kern_pgdir = (pde_t *) boot_alloc(PGSIZE);
 	memcpy(e -> env_pgdir, kern_pgdir, PGSIZE);
+	// each env has a page used as pgdir, and copy the kern part from kern_pgdir into this pgdir
 
 	// UVPT maps the env's own page table read-only.
 	// Permissions: kernel R, user R
@@ -231,6 +232,7 @@ env_alloc(struct Env **newenv_store, envid_t parent_id)
 	// Allocate and set up the page directory for this environment.
 	if ((r = env_setup_vm(e)) < 0)
 		return r;
+	// only pgdir and kern vm has been correctly mapped. User part and mmio left blank.
 
 	// Generate an env_id for this environment.
 	generation = (e->env_id + (1 << ENVGENSHIFT)) & ~(NENV - 1);
@@ -521,6 +523,7 @@ env_destroy(struct Env *e)
 	// ENV_DYING. A zombie environment will be freed the next time
 	// it traps to the kernel.
 	if (e->env_status == ENV_RUNNING && curenv != e) {
+		hprintf("ENV_DYING called");
 		e->env_status = ENV_DYING;
 		return;
 	}

@@ -32,7 +32,9 @@ typedef int32_t envid_t;
 // Values of env_status in struct Env
 enum {
 	ENV_FREE = 0,
-	ENV_DYING,
+	ENV_DYING,	// DYING can only use in one case: one env want to kill another env.
+				// That means, the process itself does not end, so it can be run
+				// and can trap into kernel.
 	ENV_RUNNABLE,
 	ENV_RUNNING,
 	ENV_NOT_RUNNABLE
