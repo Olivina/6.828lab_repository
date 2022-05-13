@@ -144,6 +144,8 @@
         "type_traits": "c",
         "kdebug.h": "c",
         "cpu.h": "c",
-        "lib.h": "c"
+        "lib.h": "c",
+        "mmu.h": "c",
+        "types.h": "c"
     }
 }

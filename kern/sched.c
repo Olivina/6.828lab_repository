@@ -10,11 +10,10 @@
 void sched_halt(void);
 
 // Choose a user environment to run and run it.
-void
-sched_yield(void)
+void sched_yield(void)
 {
 
-	static const char * const env_status_name [] = {
+	static const char *const env_status_name[] = {
 		[ENV_FREE] = "ENV_FREE",
 		[ENV_DYING] = "ENV_DYING",
 		[ENV_RUNNABLE] = "ENV_RUNNABLE",
@@ -44,15 +43,17 @@ sched_yield(void)
 	int start_envid = ENVX(thiscpu->cpu_env ? thiscpu->cpu_env->env_id + 1 : 0);
 	int itr_envid;
 	bool second_turn = false;
-	for (	itr_envid = start_envid ;
-			envs[itr_envid].env_status != ENV_RUNNABLE;
-		 	// envs[itr_envid].env_status == ENV_FREE ||
-			// envs[itr_envid].env_status == ENV_NOT_RUNNABLE;
-		 	itr_envid = (itr_envid + 1 )% NENV ) {
-		if (itr_envid == start_envid ) {
-			if(second_turn)
+	for (itr_envid = start_envid;
+		 envs[itr_envid].env_status != ENV_RUNNABLE;
+		 // envs[itr_envid].env_status == ENV_FREE ||
+		 // envs[itr_envid].env_status == ENV_NOT_RUNNABLE;
+		 itr_envid = (itr_envid + 1) % NENV)
+	{
+		if (itr_envid == start_envid)
+		{
+			if (second_turn)
 				goto no_runnable;
-			else 
+			else
 				second_turn = true;
 		}
 	}
@@ -60,7 +61,7 @@ sched_yield(void)
 	// RUNNING / RUNNABLE / DYING
 	// if(debugflag)
 	// 	cprintf("found runnable envid = %d\n", itr_envid);
-	struct Env * env_to_run = &envs[itr_envid];
+	struct Env *env_to_run = &envs[itr_envid];
 	// envid2env(itr_envid, &env_to_run, false);
 
 	env_run(env_to_run);
@@ -69,11 +70,12 @@ sched_yield(void)
 
 no_runnable:
 	// sched_halt never returns
-	
-	for (itr_envid = 0; itr_envid < NENV; ++itr_envid) {
+
+	for (itr_envid = 0; itr_envid < NENV; ++itr_envid)
+	{
 		if (envs[itr_envid].env_status == ENV_FREE)
 			continue;
-		hprintf("envs[0x%x]: %s", itr_envid + 4096, env_status_name[envs[itr_envid].env_status]);
+		hprintf("envs[0x%x]: %s", itr_envid + 0x1000, env_status_name[envs[itr_envid].env_status]);
 	}
 	sched_halt();
 }
@@ -81,8 +83,7 @@ no_runnable:
 // Halt this CPU when there is nothing to do. Wait until the
 // timer interrupt wakes it up. This function never returns.
 //
-void
-sched_halt(void)
+void sched_halt(void)
 {
 	// hprintf("enter sched_halt");
 	// print_caller(read_ebp());
@@ -91,14 +92,16 @@ sched_halt(void)
 
 	// For debugging and testing purposes, if there are no runnable
 	// environments in the system, then drop into the kernel monitor.
-	for (i = 0; i < NENV; i++) {
+	for (i = 0; i < NENV; i++)
+	{
 		if ((envs[i].env_status == ENV_RUNNABLE ||
-		     envs[i].env_status == ENV_RUNNING ||
-		     envs[i].env_status == ENV_DYING))
+			 envs[i].env_status == ENV_RUNNING ||
+			 envs[i].env_status == ENV_DYING))
 			break;
 	}
 	// hprintf("i = %d", i);
-	if (i == NENV) {
+	if (i == NENV)
+	{
 		// cprintf("No runnable environments in the system!\n");
 		cprintf("No runnable environments in the system!\n");
 		while (1)
@@ -119,7 +122,7 @@ sched_halt(void)
 	unlock_kernel();
 
 	// Reset stack pointer, enable interrupts and then halt.
-	asm volatile (
+	asm volatile(
 		"movl $0, %%ebp\n"
 		"movl %0, %%esp\n"
 		"pushl $0\n"
@@ -129,6 +132,6 @@ sched_halt(void)
 		"1:\n"
 		"hlt\n"
 		"jmp 1b\n"
-	: : "a" (thiscpu->cpu_ts.ts_esp0));
+		:
+		: "a"(thiscpu->cpu_ts.ts_esp0));
 }
-
