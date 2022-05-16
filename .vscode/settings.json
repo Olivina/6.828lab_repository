@@ -146,6 +146,7 @@
         "cpu.h": "c",
         "lib.h": "c",
         "mmu.h": "c",
-        "types.h": "c"
+        "types.h": "c",
+        "picirq.h": "c"
     }
 }

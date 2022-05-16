@@ -280,6 +280,7 @@ int env_alloc(struct Env **newenv_store, envid_t parent_id)
 
 	// Enable interrupts while in user mode.
 	// LAB 4: Your code here.
+	e->env_tf.tf_eflags |= FL_IF;
 
 	// Clear the page fault handler until user installs one.
 	e->env_pgfault_upcall = 0;
@@ -318,8 +319,11 @@ region_alloc(struct Env *e, void *va, size_t len)
 		panic("region_alloc: va + len overflow");
 	uint32_t len_aligned = va_end_aligned - va_start_aligned;
 	size_t v_itr;
+	// int count = 0;
 	for (v_itr = va_start_aligned; v_itr < va_end_aligned; v_itr += PGSIZE)
 	{
+		// count++;
+		// hprintf("alloc %d pages", count);
 		struct PageInfo *p;
 		if ((p = page_alloc(0)) == NULL)
 			panic("region_alloc: %e\n", -E_NO_MEM);
@@ -612,6 +616,7 @@ void env_run(struct Env *e)
 	curenv->env_status = ENV_RUNNING;
 	curenv->env_runs++;
 	lcr3(PADDR(curenv->env_pgdir));
+
 	env_pop_tf(&curenv->env_tf);
 
 	// should not reach here!

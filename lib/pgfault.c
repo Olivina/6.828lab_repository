@@ -6,7 +6,6 @@
 
 #include <inc/lib.h>
 
-
 // Assembly language pgfault entrypoint defined in lib/pfentry.S.
 extern void _pgfault_upcall(void);
 
@@ -21,15 +20,28 @@ void (*_pgfault_handler)(struct UTrapframe *utf);
 // at UXSTACKTOP), and tell the kernel to call the assembly-language
 // _pgfault_upcall routine when a page fault occurs.
 //
-void
-set_pgfault_handler(void (*handler)(struct UTrapframe *utf))
+void set_pgfault_handler(void (*handler)(struct UTrapframe *utf))
 {
 	int r;
 
-	if (_pgfault_handler == 0) {
+	if (_pgfault_handler == 0)
+	{
 		// First time through!
+		pte_t *pte_ptr = (pte_t *)uvpt;
+
 		// LAB 4: Your code here.
-		panic("set_pgfault_handler not implemented");
+		int errno;
+		// cprintf("%s:%d: before set uxstack: PDX(la) = %x, PTX(la) = %x\nentry content = %x\n", __FILE__, __LINE__, PDX(UXSTACKBOTTOM), PTX(UXSTACKBOTTOM), *(pte_ptr + PDX(UXSTACKBOTTOM) * 1024 + PTX(UXSTACKBOTTOM)));
+		if ((errno = sys_page_alloc(0, (void *)UXSTACKBOTTOM, PTE_U | PTE_P | PTE_W)) < 0)
+		{
+			panic("set_pgfault_handler: NO_MEM");
+		}
+		if ((errno = sys_env_set_pgfault_upcall(0, _pgfault_upcall)) < 0)
+		{
+			panic("set pagefault upcall error");
+		}
+		// cprintf("%s:%d: after set uxstack: PDX(la) = %x, PTX(la) = %x\nentry content = %x\n", __FILE__, __LINE__, PDX(UXSTACKBOTTOM), PTX(UXSTACKBOTTOM), *(pte_ptr + PDX(UXSTACKBOTTOM) * 1024 + PTX(UXSTACKBOTTOM)));
+		// panic("set_pgfault_handler not implemented");
 	}
 
 	// Save handler pointer for assembly to call.

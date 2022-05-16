@@ -12,13 +12,13 @@
 // exception stack, and then it pushes a UTrapframe onto our user
 // exception stack:
 //
-//	trap-time esp
-//	trap-time eflags
-//	trap-time eip
+//	trap-time esp			<-- 0x28(%esp)
+//	trap-time eflags		<-- 0x24(%esp)
+//	trap-time eip			<-- 0x20(%esp)
 //	utf_regs.reg_eax
 //	...
 //	utf_regs.reg_esi
-//	utf_regs.reg_edi
+//	utf_regs.reg_edi		<-- new %esp
 //	utf_err (error code)
 //	utf_fault_va            <-- %esp
 //
@@ -66,17 +66,33 @@ _pgfault_upcall:
 	//
 	// LAB 4: Your code here.
 
+	addl $8, %esp			// utf_fault_va and utf_err
+	movl 0x20(%esp), %eax 	// copy trap-time %eip into %eax
+	subl $4, 0x28(%esp)		// trap-time %esp - 4
+	movl 0x28(%esp), %edx	
+	movl %eax, (%edx)
+
 	// Restore the trap-time registers.  After you do this, you
 	// can no longer modify any general-purpose registers.
 	// LAB 4: Your code here.
+
+	popal
+	addl $4, %esp			// trap-time eip
 
 	// Restore eflags from the stack.  After you do this, you can
 	// no longer use arithmetic operations or anything else that
 	// modifies eflags.
 	// LAB 4: Your code here.
 
+	popfl					// trap-time eflags
+	
+
 	// Switch back to the adjusted trap-time stack.
 	// LAB 4: Your code here.
 
+	popl %esp
+
 	// Return to re-execute the instruction that faulted.
 	// LAB 4: Your code here.
+
+	ret

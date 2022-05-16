@@ -69,6 +69,14 @@ TRAPHANDLER_NOEC(t_mchk_handler, T_MCHK)
 TRAPHANDLER_NOEC(t_simderr_handler, T_SIMDERR)
 TRAPHANDLER_NOEC(t_syscall_handler, T_SYSCALL)
 
+TRAPHANDLER_NOEC(i_timer_handler, IRQ_OFFSET + IRQ_TIMER)
+TRAPHANDLER_NOEC(i_kbd_handler, IRQ_OFFSET + IRQ_KBD)
+TRAPHANDLER_NOEC(i_serial_handler, IRQ_OFFSET + IRQ_SERIAL)
+TRAPHANDLER_NOEC(i_spurious_handler, IRQ_OFFSET + IRQ_SPURIOUS)
+TRAPHANDLER_NOEC(i_ide_handler, IRQ_OFFSET + IRQ_IDE)
+TRAPHANDLER_NOEC(i_error_handler, IRQ_OFFSET + IRQ_ERROR)
+
+
 # .global vectors
 # .long
 

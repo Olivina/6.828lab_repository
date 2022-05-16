@@ -101,6 +101,7 @@ sys_exofork(void)
 	memcpy(&new_env->env_tf, &curenv->env_tf, sizeof(struct Trapframe));
 	new_env->env_tf.tf_regs.reg_eax = 0;
 	new_env->env_status = ENV_NOT_RUNNABLE;
+	new_env->env_pgfault_upcall = curenv->env_pgfault_upcall;
 
 	// return child's envid
 	return new_env->env_id;
@@ -153,7 +154,15 @@ static int
 sys_env_set_pgfault_upcall(envid_t envid, void *func)
 {
 	// LAB 4: Your code here.
-	panic("sys_env_set_pgfault_upcall not implemented");
+	struct Env *env;
+	int errno;
+	if ((errno = envid2env(envid, &env, true)) < 0)
+	{
+		return errno;
+	}
+	env->env_pgfault_upcall = func;
+	return 0;
+	// panic("sys_env_set_pgfault_upcall not implemented");
 }
 
 // Allocate a page of memory and map it at 'va' with permission
@@ -206,7 +215,7 @@ sys_page_alloc(envid_t envid, void *va, int perm)
 	{
 		return -E_INVAL;
 	}
-	if ((p = page_alloc(perm)) == NULL)
+	if ((p = page_alloc(0)) == NULL)
 	{
 		return -E_NO_MEM;
 	}
@@ -256,51 +265,59 @@ sys_page_map(envid_t srcenvid, void *srcva,
 	// check if srcenvid exists
 	if ((errno = envid2env(srcenvid, &src, true)) < 0)
 	{
+		hprintf("err = %e", errno);
 		return errno;
 	}
 
 	// check if dstenvid exists
 	if ((errno = envid2env(dstenvid, &dst, true)) < 0)
 	{
+		hprintf("err = %e", errno);
 		return errno;
 	}
 
 	if (((uint32_t)srcva) % PGSIZE || ((uint32_t)srcva) >= UTOP)
 	{
+		hprintf("((uint32_t)srcva) = 0x%x,  >= UTOP = 0x%x", ((uint32_t)srcva), UTOP);
 		return -E_INVAL;
 	}
 
 	if (((uint32_t)dstva) % PGSIZE || ((uint32_t)dstva) >= UTOP)
 	{
+		hprintf("err = %e", errno);
 		return -E_INVAL;
 	}
 
 	// check if PTE_U and PTE_P set
 	if ((perm & (PTE_U | PTE_P)) != (PTE_U | PTE_P))
 	{
+		hprintf("err = %e", errno);
 		return -E_INVAL;
 	}
 	// does not allow write
 	if (perm & (~(PTE_SYSCALL)))
 	{
+		hprintf("err = %e", errno);
 		return -E_INVAL;
 	}
 
 	// acquire the physical page
 	if ((p = page_lookup(src->env_pgdir, srcva, &pte_store)) == NULL)
 	{
+		hprintf("err = %e", errno);
 		return -E_INVAL;
 	}
 
 	if ((perm & PTE_W) && !(PTE_PERM(*pte_store) & PTE_W))
 	{
+		hprintf("err = %e", errno);
 		return -E_INVAL;
 	}
 
 	// map to dst env dstva
 	if ((errno = page_insert(dst->env_pgdir, p, dstva, perm)) < 0)
 	{
-		hprintf("call");
+		hprintf("err = %e", errno);
 		return -E_NO_MEM;
 	}
 	return 0;

@@ -3,9 +3,14 @@
 #include <inc/string.h>
 #include <inc/lib.h>
 
+#ifndef JOS_USER
+extern volatile pte_t uvpt[]; // VA of "virtual page table"
+extern volatile pde_t uvpd[]; // VA of current page directory
+#endif
+
 // PTE_COW marks copy-on-write page table entries.
 // It is one of the bits explicitly allocated to user processes (PTE_AVAIL).
-#define PTE_COW		0x800
+#define PTE_COW 0x800
 
 //
 // Custom page fault handler - if faulting page is copy-on-write,
@@ -14,9 +19,68 @@
 static void
 pgfault(struct UTrapframe *utf)
 {
-	void *addr = (void *) utf->utf_fault_va;
+	void *addr = (void *)utf->utf_fault_va;
+	void *va_fault_page = ROUNDDOWN(addr, PGSIZE);
 	uint32_t err = utf->utf_err;
 	int r;
+
+	int perm = err & FEC_WR ? PTE_P | PTE_U | PTE_W : PTE_P | PTE_U;
+
+	envid_t envid = sys_getenvid();
+
+	// cprintf("[%08x] %s:%d: [Page Fault Handler] enter\n", envid, __FILE__, __LINE__);
+	if (err & FEC_PR)
+	{
+		// page exist, but protection violation
+		if (err & FEC_WR)
+		{
+			// First, check if the page exist
+			// second, check if the page is COW or RO
+			// write operation
+			// cprintf("[%08x] %s:%d: [Page Fault Handler] handle write fault at 0x%x\n", envid, __FILE__, __LINE__, addr);
+			if ((r = sys_page_alloc(0, PFTEMP, perm)) < 0)
+			{
+				cprintf("%s:%d: [Page Fault Handler] %e\n", __FILE__, __LINE__, r);
+				exit();
+			}
+
+			if (memcpy(PFTEMP, va_fault_page, PGSIZE) != PFTEMP)
+			{
+				cprintf("%s:%d: [Page Fault Handler] memcpy failed\n", __FILE__, __LINE__);
+				exit();
+			}
+			if ((r = sys_page_unmap(0, va_fault_page)) < 0)
+			{
+				cprintf("%s:%d: [Page Fault Handler] %e\n", __FILE__, __LINE__, r);
+				exit();
+			}
+			if ((r = sys_page_map(0, PFTEMP, 0, va_fault_page, perm)) < 0)
+			{
+				cprintf("%s:%d: [Page Fault Handler] %e\n", __FILE__, __LINE__, r);
+				exit();
+			}
+			if ((r = sys_page_unmap(0, PFTEMP)) < 0)
+			{
+				cprintf("%s:%d: [Page Fault Handler] %e\n", __FILE__, __LINE__, r);
+				exit();
+			}
+		}
+		else
+		{
+			cprintf("%s:%d: [Page Fault Handler] read error\n", __FILE__, __LINE__);
+			// read?
+		}
+	}
+	else
+	{
+		// page not exists, alloc it
+		cprintf("[%08x] %s:%d: [Page Fault Handler] handle not present fault\n", envid, __FILE__, __LINE__);
+		if ((r = sys_page_alloc(0, va_fault_page, perm)) < 0)
+		{
+			cprintf("%s:%d: [Page Fault Handler] alloc error\n", __FILE__, __LINE__);
+			exit();
+		}
+	}
 
 	// Check that the faulting access was (1) a write, and (2) to a
 	// copy-on-write page.  If not, panic.
@@ -33,8 +97,9 @@ pgfault(struct UTrapframe *utf)
 	//   You should make three system calls.
 
 	// LAB 4: Your code here.
-
-	panic("pgfault not implemented");
+	// cprintf("[%08x] %s:%d: [Page Fault Handler] return\n", envid, __FILE__, __LINE__);
+	return;
+	// panic("pgfault not implemented");
 }
 
 //
@@ -53,9 +118,49 @@ duppage(envid_t envid, unsigned pn)
 {
 	int r;
 
-	// LAB 4: Your code here.
-	panic("duppage not implemented");
+	pte_t *pte_ptr = (pte_t *)uvpt;
+	// pte_t *uxstack_entry = pte_ptr + (PDX(UXSTACKBOTTOM) * 1024 + PTX(UXSTACKBOTTOM));
+	pte_ptr += pn;
+
+	// cprintf("%s:%d: duppage: addr to duplicate: 0x%x\n", __FILE__, __LINE__, pn * PGSIZE);
+
+	// cprintf("%s:%d: duppage: uxstack_entry = 0x%x\n", __FILE__, __LINE__, uxstack_entry);
+
+	if (*pte_ptr & PTE_W || *pte_ptr & PTE_COW)
+	{
+		// cprintf("%s:%d: duppage1: *uxstack_entry = 0x%x\n", __FILE__, __LINE__, *uxstack_entry);
+		// cprintf("%s:%d: duppage1: *pte_ptr = 0x%x\n", __FILE__, __LINE__, *pte_ptr);
+		if ((r = sys_page_map(0, (void *)(pn * PGSIZE), envid, (void *)(pn * PGSIZE), PTE_COW | PTE_P | PTE_U)) < 0)
+		{
+			cprintf("%s:%d: err = %e\n", __FILE__, __LINE__, r);
+			return r;
+		}
+		// cprintf("%s:%d: duppage2: *uxstack_entry = 0x%x\n", __FILE__, __LINE__, *uxstack_entry);
+		// cprintf("%s:%d: duppage2: *pte_ptr = 0x%x\n", __FILE__, __LINE__, *pte_ptr);
+		if ((r = sys_page_map(envid, (void *)(pn * PGSIZE), 0, (void *)(pn * PGSIZE), PTE_COW | PTE_P | PTE_U)) < 0)
+		{
+			cprintf("%s:%d: err = %e\n", __FILE__, __LINE__, r);
+			return r;
+		}
+		// cprintf("%s:%d: duppage3: *uxstack_entry = 0x%x\n", __FILE__, __LINE__, *uxstack_entry);
+		// cprintf("%s:%d: duppage3: *pte_ptr = 0x%x\n", __FILE__, __LINE__, *pte_ptr);
+	}
+	else
+	{
+		// READ ONLY
+		cprintf("read only fault\n");
+		int perm = *pte_ptr & PTE_SYSCALL;
+		if ((r = sys_page_map(0, (void *)(pn * PGSIZE), envid, (void *)(pn * PGSIZE), perm | PTE_P | PTE_U)) < 0)
+		{
+			cprintf("%s:%d: err = %e\n", __FILE__, __LINE__, r);
+			return r;
+		}
+	}
 	return 0;
+
+	// LAB 4: Your code here.
+	// panic("duppage not implemented");
+	// return 0;
 }
 
 //
@@ -77,13 +182,70 @@ duppage(envid_t envid, unsigned pn)
 envid_t
 fork(void)
 {
+	set_pgfault_handler(pgfault);
+
+	envid_t envid;
+	uint8_t *addr;
+	int errno;
+	// extern unsigned char uvpd[];
+	// extern unsigned char uvpt[];
+
+	envid = sys_exofork();
+	if (envid < 0) // failed
+		return envid;
+	if (envid == 0) // child
+	{
+		thisenv = &envs[ENVX(sys_getenvid())];
+		return 0;
+	}
+	pde_t *pde_ptr = (pde_t *)uvpd;
+	pte_t *pte_ptr = (pte_t *)uvpt;
+	int pn, ppn;
+	int count = 0, count_present = 0;
+
+	pte_t *uxstack_entry = pte_ptr + (PDX(UXSTACKBOTTOM) * 1024 + PTX(UXSTACKBOTTOM));
+
+	for (pn = 0; pn <= USTACKTOP / PTSIZE; ++pn)
+	{
+		// pde
+		if (*(pde_ptr + pn) & PTE_P)
+		{
+			for (ppn = 0; ppn < NPTENTRIES - 1; ++ppn)
+			{
+				if (*(pte_ptr + pn * NPTENTRIES + ppn) & PTE_P)
+				{
+					// cprintf("%s:%d: fork: addr to duplicate: 0x%x\n", __FILE__, __LINE__, PGADDR(pn, ppn, 0));
+					// cprintf("%s:%d: before duppage: *uxstack_entry = 0x%x\n", __FILE__, __LINE__, *uxstack_entry);
+					if ((errno = duppage(envid, pn * NPTENTRIES + ppn)) < 0)
+					{
+						cprintf("%s:%d: err = %e\n", __FILE__, __LINE__, errno);
+						return errno;
+					}
+					// cprintf("%s:%d: after duppage: *uxstack_entry = 0x%x\n", __FILE__, __LINE__, *uxstack_entry);
+				}
+			}
+		}
+	}
+	// cprintf("%s:%d: *uxstack_entry = 0x%x\n", __FILE__, __LINE__, *uxstack_entry);
+	// panic("stop");
+	// 对UXSTACK特别处理
+	if ((errno = sys_page_alloc(envid, (void *)UXSTACKBOTTOM, PTE_P | PTE_U | PTE_W)) < 0)
+	{
+		cprintf("%s:%d: set exception stack failed: %e\n", __FILE__, __LINE__, errno);
+		exit();
+	}
+
+	if ((errno = sys_env_set_status(envid, ENV_RUNNABLE)) < 0)
+	{
+		return errno;
+	}
+	return envid;
 	// LAB 4: Your code here.
-	panic("fork not implemented");
+	// panic("fork not implemented");
 }
 
 // Challenge!
-int
-sfork(void)
+int sfork(void)
 {
 	panic("sfork not implemented");
 	return -E_INVAL;
