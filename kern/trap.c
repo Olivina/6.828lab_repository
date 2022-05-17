@@ -29,6 +29,8 @@ struct Gatedesc idt[256] = {{0}};
 struct Pseudodesc idt_pd = {
 	sizeof(idt) - 1, (uint32_t)idt};
 
+const char *const syscallname(int);
+
 static const char *trapname(int trapno)
 {
 	static const char *const excnames[] = {
@@ -99,7 +101,7 @@ void trap_init(void)
 
 	SETGATE(idt[T_DIVIDE], 0, GD_KT, t_devide_handler, 0);
 	SETGATE(idt[T_DEBUG], 0, GD_KT, t_debug_handler, 3);
-	SETGATE(idt[T_NMI], 0, GD_KT, t_nmi_handler, 0);
+	SETGATE(idt[T_NMI], 1, GD_KT, t_nmi_handler, 0);
 	SETGATE(idt[T_BRKPT], 0, GD_KT, t_brkpt_handler, 3);
 	SETGATE(idt[T_OFLOW], 0, GD_KT, t_oflow_handler, 0);
 	SETGATE(idt[T_BOUND], 0, GD_KT, t_bound_handler, 0);
@@ -251,6 +253,12 @@ trap_dispatch(struct Trapframe *tf)
 	case T_PGFLT:
 		page_fault_handler(tf);
 		return;
+	case IRQ_OFFSET + IRQ_TIMER:
+		hprintf("timer irq");
+		// curenv->env_status = ENV_RUNNABLE;
+		// sys_yield();
+		syscall(SYS_yield, 0, 0, 0, 0, 0);
+		return;
 	case T_SYSCALL:
 	{
 		struct PushRegs *regs = (struct PushRegs *)tf;
@@ -260,6 +268,7 @@ trap_dispatch(struct Trapframe *tf)
 			env_destroy(curenv);
 			return;
 		}
+		hprintf("syscall name = %s", syscallname(regs->reg_eax));
 		regs->reg_eax = syscall(regs->reg_eax, regs->reg_edx,
 								regs->reg_ecx, regs->reg_ebx,
 								regs->reg_edi, regs->reg_esi);
@@ -299,7 +308,7 @@ trap_dispatch(struct Trapframe *tf)
 	}
 }
 
-const char *syscallname(int syscallno)
+const char *const syscallname(int syscallno)
 {
 	static const char *const excnames[] = {
 		[SYS_cputs] = "SYS_cputs",
@@ -354,6 +363,8 @@ void trap(struct Trapframe *tf)
 		// serious kernel work.
 		// LAB 4: Your code here.
 		lock_kernel();
+		hprintf("into trap, reason = %s from %x", trapname(tf->tf_trapno), curenv->env_id);
+
 		assert(curenv);
 
 		// Garbage collect if current enviroment is a zombie
