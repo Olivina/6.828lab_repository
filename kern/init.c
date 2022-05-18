@@ -46,30 +46,20 @@ void i386_init(void)
 	lock_kernel();
 	boot_aps();
 
+	// Start fs.
+	ENV_CREATE(fs_fs, ENV_TYPE_FS);
+
 #if defined(TEST)
 	// Don't touch -- used by grading script!
 	ENV_CREATE(TEST, ENV_TYPE_USER);
 #else
 	// Touch all you want.
-	ENV_CREATE(user_primes, ENV_TYPE_USER);
-
+	ENV_CREATE(user_icode, ENV_TYPE_USER);
 #endif // TEST*
-	// ENV_CREATE(TEST, ENV_TYPE_USER);
-	// ENV_CREATE(TEST, ENV_TYPE_USER);
-	// ENV_CREATE(TEST, ENV_TYPE_USER);
-	// ENV_CREATE(TEST, ENV_TYPE_USER);
-	// ENV_CREATE(TEST, ENV_TYPE_USER);
-	// ENV_CREATE(TEST, ENV_TYPE_USER);
-	// ENV_CREATE(TEST, ENV_TYPE_USER);
-	// ENV_CREATE(TEST, ENV_TYPE_USER);
-	// ENV_CREATE(TEST, ENV_TYPE_USER);
-	// ENV_CREATE(TEST, ENV_TYPE_USER);
-	// ENV_CREATE(TEST, ENV_TYPE_USER);
-	// ENV_CREATE(TEST, ENV_TYPE_USER);
-	// ENV_CREATE(TEST, ENV_TYPE_USER);
-	// ENV_CREATE(TEST, ENV_TYPE_USER);
-	// ENV_CREATE(TEST, ENV_TYPE_USER);
-	// ENV_CREATE(TEST, ENV_TYPE_USER);
+
+	// Should not be necessary - drains keyboard because interrupt has given up.
+	kbd_intr();
+
 	// Schedule and run the first user environment!
 	// lock_kernel();
 	sched_yield();
