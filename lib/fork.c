@@ -182,6 +182,7 @@ duppage(envid_t envid, unsigned pn)
 envid_t
 fork(void)
 {
+
 	set_pgfault_handler(pgfault);
 
 	envid_t envid;
@@ -195,7 +196,9 @@ fork(void)
 		return envid;
 	if (envid == 0) // child
 	{
-		thisenv = &envs[ENVX(sys_getenvid())];
+		envid_t this = sys_getenvid();
+		int envx = ENVX(sys_getenvid());
+		thisenv = &envs[envx];
 		return 0;
 	}
 	pde_t *pde_ptr = (pde_t *)uvpd;
@@ -234,11 +237,14 @@ fork(void)
 		cprintf("%s:%d: set exception stack failed: %e\n", __FILE__, __LINE__, errno);
 		exit();
 	}
+	// cprintf("%s:%d: called\n", __FILE__, __LINE__);
 
 	if ((errno = sys_env_set_status(envid, ENV_RUNNABLE)) < 0)
 	{
+		cprintf("%s:%d: called2\n", __FILE__, __LINE__);
 		return errno;
 	}
+	// cprintf("%s:%d: envid = %x\n", __FILE__, __LINE__, envid);
 	return envid;
 	// LAB 4: Your code here.
 	// panic("fork not implemented");

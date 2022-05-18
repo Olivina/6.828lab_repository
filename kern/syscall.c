@@ -41,6 +41,7 @@ sys_cgetc(void)
 static envid_t
 sys_getenvid(void)
 {
+	// hprintf("[%x] curenv = 0x%x", curenv->env_id, curenv);
 	return curenv->env_id;
 }
 
@@ -71,7 +72,7 @@ sys_env_destroy(envid_t envid)
 static void
 sys_yield(void)
 {
-	curenv->env_status = ENV_RUNNABLE;
+	// curenv->env_status = ENV_RUNNABLE;
 	sched_yield();
 }
 
@@ -398,8 +399,50 @@ sys_page_unmap(envid_t envid, void *va)
 static int
 sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 {
+	struct Env *dstenv;
+	struct PageInfo *psrc;
+	pte_t *pte_store;
+	void *dstva;
+	int errno;
+
+	if ((errno = envid2env(envid, &dstenv, false)) < 0)
+	{
+		return errno; // -E_BAD_ENV
+	}
+	if (dstenv->env_ipc_recving != 1)
+	{
+		return -E_IPC_NOT_RECV;
+	}
+	dstva = dstenv->env_ipc_dstva;
+	if (dstva != NULL)
+	{
+		if ((uint32_t)srcva >= UTOP || (uint32_t)srcva % PGSIZE)
+		{
+			return -E_INVAL;
+		}
+		if ((errno = user_mem_check(curenv, srcva, PGSIZE, perm)) < 0)
+		{
+			return -E_INVAL;
+		}
+		if ((psrc = page_lookup(curenv->env_pgdir, srcva, &pte_store)) == NULL)
+		{
+			return -E_INVAL;
+		}
+		page_remove(dstenv->env_pgdir, dstva);
+		if ((errno = page_insert(dstenv->env_pgdir, psrc, dstva, perm)) < 0)
+		{
+			return errno;
+		}
+	}
+	dstenv->env_ipc_value = value;
+	dstenv->env_ipc_from = curenv->env_id;
+	dstenv->env_ipc_recving = 0;
+	dstenv->env_status = ENV_RUNNABLE;
+	dstenv->env_tf.tf_regs.reg_eax = 0;
+	return 0;
+
 	// LAB 4: Your code here.
-	panic("sys_ipc_try_send not implemented");
+	// panic("sys_ipc_try_send not implemented");
 }
 
 // Block until a value is ready.  Record that you want to receive
@@ -417,7 +460,16 @@ static int
 sys_ipc_recv(void *dstva)
 {
 	// LAB 4: Your code here.
-	panic("sys_ipc_recv not implemented");
+	if ((uint32_t)dstva >= UTOP || (uint32_t)dstva % PGSIZE)
+	{
+		return -E_INVAL;
+	}
+	curenv->env_ipc_recving = 1;
+	curenv->env_status = ENV_NOT_RUNNABLE;
+	curenv->env_ipc_dstva = dstva;
+	sched_yield();
+
+	// panic("sys_ipc_recv not implemented");
 	return 0;
 }
 

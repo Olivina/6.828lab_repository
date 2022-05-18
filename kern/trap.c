@@ -55,6 +55,8 @@ static const char *trapname(int trapno)
 		[T_MCHK] = "Machine-Check",
 		[T_SIMDERR] = "SIMD Floating-Point Exception",
 		[T_SYSCALL] = "System Call",
+		[IRQ_OFFSET +
+			IRQ_TIMER] = "IRQ TIMER",
 	};
 
 	if (trapno < ARRAY_SIZE(excnames))
@@ -94,14 +96,27 @@ void trap_init(void)
 	// interrupt
 	extern void i_timer_handler(void);
 	extern void i_kbd_handler(void);
+	extern void i_2_handler(void);
+	extern void i_3_handler(void);
 	extern void i_serial_handler(void);
+	extern void i_5_handler(void);
+	extern void i_6_handler(void);
 	extern void i_spurious_handler(void);
+	extern void i_8_handler(void);
+	extern void i_9_handler(void);
+	extern void i_10_handler(void);
+	extern void i_11_handler(void);
+	extern void i_12_handler(void);
+	extern void i_13_handler(void);
 	extern void i_ide_handler(void);
+	extern void i_15_handler(void);
+	extern void i_17_handler(void);
+	extern void i_18_handler(void);
 	extern void i_error_handler(void);
 
 	SETGATE(idt[T_DIVIDE], 0, GD_KT, t_devide_handler, 0);
 	SETGATE(idt[T_DEBUG], 0, GD_KT, t_debug_handler, 3);
-	SETGATE(idt[T_NMI], 1, GD_KT, t_nmi_handler, 0);
+	SETGATE(idt[T_NMI], 0, GD_KT, t_nmi_handler, 0);
 	SETGATE(idt[T_BRKPT], 0, GD_KT, t_brkpt_handler, 3);
 	SETGATE(idt[T_OFLOW], 0, GD_KT, t_oflow_handler, 0);
 	SETGATE(idt[T_BOUND], 0, GD_KT, t_bound_handler, 0);
@@ -123,10 +138,24 @@ void trap_init(void)
 	// interrupts
 	SETGATE(idt[IRQ_OFFSET + IRQ_TIMER], 0, GD_KT, i_timer_handler, 0);
 	SETGATE(idt[IRQ_OFFSET + IRQ_KBD], 0, GD_KT, i_kbd_handler, 0);
+	SETGATE(idt[IRQ_OFFSET + 2], 0, GD_KT, i_2_handler, 0);
+	SETGATE(idt[IRQ_OFFSET + 3], 0, GD_KT, i_3_handler, 0);
 	SETGATE(idt[IRQ_OFFSET + IRQ_SERIAL], 0, GD_KT, i_serial_handler, 0);
+	SETGATE(idt[IRQ_OFFSET + 5], 0, GD_KT, i_5_handler, 0);
+	SETGATE(idt[IRQ_OFFSET + 6], 0, GD_KT, i_6_handler, 0);
 	SETGATE(idt[IRQ_OFFSET + IRQ_SPURIOUS], 0, GD_KT, i_spurious_handler, 0);
+	SETGATE(idt[IRQ_OFFSET + 8], 0, GD_KT, i_8_handler, 0);
+	SETGATE(idt[IRQ_OFFSET + 9], 0, GD_KT, i_9_handler, 0);
+	SETGATE(idt[IRQ_OFFSET + 10], 0, GD_KT, i_10_handler, 0);
+	SETGATE(idt[IRQ_OFFSET + 11], 0, GD_KT, i_11_handler, 0);
+	SETGATE(idt[IRQ_OFFSET + 12], 0, GD_KT, i_12_handler, 0);
+	SETGATE(idt[IRQ_OFFSET + 13], 0, GD_KT, i_13_handler, 0);
 	SETGATE(idt[IRQ_OFFSET + IRQ_IDE], 0, GD_KT, i_ide_handler, 0);
-	SETGATE(idt[IRQ_OFFSET + IRQ_ERROR], 0, GD_KT, i_error_handler, 0);
+	SETGATE(idt[IRQ_OFFSET + 15], 0, GD_KT, i_15_handler, 0);
+
+	SETGATE(idt[IRQ_OFFSET + 17], 0, GD_KT, i_17_handler, 3);
+	SETGATE(idt[IRQ_OFFSET + 18], 0, GD_KT, i_18_handler, 3);
+	SETGATE(idt[IRQ_OFFSET + IRQ_ERROR], 0, GD_KT, i_error_handler, 3);
 
 	// Per-CPU setup
 	trap_init_percpu();
@@ -162,7 +191,8 @@ void trap_init_percpu(void)
 
 	thiscpu->cpu_ts.ts_esp0 = KSTACKTOP - cpunum() * (KSTKSIZE + KSTKGAP);
 	thiscpu->cpu_ts.ts_ss0 = GD_KD;
-	thiscpu->cpu_ts.ts_iomb = sizeof(struct Taskstate);
+	// thiscpu->cpu_ts.ts_iomb = sizeof(struct Taskstate);
+	thiscpu->cpu_ts.ts_iomb = (uint16_t)(MMIOBASE >> 16);
 	gdt[(GD_TSS0 >> 3) + cpunum()] = SEG16(STS_T32A, (uint32_t)(&(thiscpu->cpu_ts)),
 										   sizeof(struct Taskstate) - 1, 0);
 	gdt[(GD_TSS0 >> 3) + cpunum()].sd_s = 0;
@@ -254,10 +284,8 @@ trap_dispatch(struct Trapframe *tf)
 		page_fault_handler(tf);
 		return;
 	case IRQ_OFFSET + IRQ_TIMER:
-		hprintf("timer irq");
-		// curenv->env_status = ENV_RUNNABLE;
-		// sys_yield();
-		syscall(SYS_yield, 0, 0, 0, 0, 0);
+		lapic_eoi();
+		sched_yield();
 		return;
 	case T_SYSCALL:
 	{
@@ -268,11 +296,11 @@ trap_dispatch(struct Trapframe *tf)
 			env_destroy(curenv);
 			return;
 		}
-		hprintf("syscall name = %s", syscallname(regs->reg_eax));
+		// hprintf("syscall name = %s", syscallname(regs->reg_eax));
 		regs->reg_eax = syscall(regs->reg_eax, regs->reg_edx,
 								regs->reg_ecx, regs->reg_ebx,
 								regs->reg_edi, regs->reg_esi);
-		// return value has already been written into eax
+		// return value has already been written into eax/
 		return;
 	}
 	default:
@@ -354,6 +382,7 @@ void trap(struct Trapframe *tf)
 	// Check that interrupts are disabled.  If this assertion
 	// fails, DO NOT be tempted to fix it by inserting a "cli" in
 	// the interrupt path.
+	// hprintf("into trap, reason = %s from %x", trapname(tf->tf_trapno), curenv->env_id);
 	assert(!(read_eflags() & FL_IF));
 
 	if ((tf->tf_cs & 3) == 3)
@@ -363,9 +392,13 @@ void trap(struct Trapframe *tf)
 		// serious kernel work.
 		// LAB 4: Your code here.
 		lock_kernel();
-		hprintf("into trap, reason = %s from %x", trapname(tf->tf_trapno), curenv->env_id);
 
 		assert(curenv);
+		// hprintf(">>trap from [%x], reason = %s", curenv->env_id, trapname(tf->tf_trapno));
+		// if (tf->tf_trapno == T_SYSCALL)
+		// {
+		// 	hprintf("\tsyscall = %s", syscallname(tf->tf_regs.reg_eax));
+		// }
 
 		// Garbage collect if current enviroment is a zombie
 		if (curenv->env_status == ENV_DYING)

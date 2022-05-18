@@ -23,8 +23,30 @@ int32_t
 ipc_recv(envid_t *from_env_store, void *pg, int *perm_store)
 {
 	// LAB 4: Your code here.
-	panic("ipc_recv not implemented");
-	return 0;
+	int errno;
+	if ((uint32_t)pg > UTOP || (uint32_t)pg % PGSIZE)
+	{
+		return -E_INVAL;
+	}
+
+	if ((errno = sys_ipc_recv(pg)) < 0)
+	{
+		return errno;
+	}
+	// cprintf("%s:%d: child: received\n", __FILE__, __LINE__);
+	if (from_env_store)
+	{
+		*from_env_store = thisenv->env_ipc_from;
+	}
+	// cprintf("%s:%d: child: ipc from\n", __FILE__, __LINE__);
+	if (perm_store)
+	{
+		*perm_store = thisenv->env_ipc_perm;
+	}
+	// cprintf("%s:%d: child: perm_store\n", __FILE__, __LINE__);
+	return thisenv->env_ipc_value;
+	// panic("ipc_recv not implemented");
+	// return 0;
 }
 
 // Send 'val' (and 'pg' with 'perm', if 'pg' is nonnull) to 'toenv'.
@@ -35,11 +57,21 @@ ipc_recv(envid_t *from_env_store, void *pg, int *perm_store)
 //   Use sys_yield() to be CPU-friendly.
 //   If 'pg' is null, pass sys_ipc_try_send a value that it will understand
 //   as meaning "no page".  (Zero is not the right value.)
-void
-ipc_send(envid_t to_env, uint32_t val, void *pg, int perm)
+void ipc_send(envid_t to_env, uint32_t val, void *pg, int perm)
 {
 	// LAB 4: Your code here.
-	panic("ipc_send not implemented");
+	int errno;
+	while ((errno = sys_ipc_try_send(to_env, val, pg, perm)) != 0)
+	{
+		if (errno != -E_IPC_NOT_RECV)
+		{
+			cprintf("%s:%d: to_env = %x, val = %d, pg = %x, perm = %d\n", __FILE__, __LINE__, to_env, val, pg, perm);
+			panic("invalid value");
+		}
+		sys_yield();
+	}
+	// return;
+	// panic("ipc_send not implemented");
 }
 
 // Find the first environment of the given type.  We'll use this to

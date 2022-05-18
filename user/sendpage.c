@@ -6,16 +6,17 @@
 const char *str1 = "hello child environment! how are you?";
 const char *str2 = "hello parent environment! I'm good.";
 
-#define TEMP_ADDR	((char*)0xa00000)
-#define TEMP_ADDR_CHILD	((char*)0xb00000)
+#define TEMP_ADDR ((char *)0xa00000)
+#define TEMP_ADDR_CHILD ((char *)0xb00000)
 
-void
-umain(int argc, char **argv)
+void umain(int argc, char **argv)
 {
 	envid_t who;
 
-	if ((who = fork()) == 0) {
+	if ((who = fork()) == 0)
+	{
 		// Child
+		cprintf("%s:%d: child called\n", __FILE__, __LINE__);
 		ipc_recv(&who, TEMP_ADDR_CHILD, 0);
 		cprintf("%x got message: %s\n", who, TEMP_ADDR_CHILD);
 		if (strncmp(TEMP_ADDR_CHILD, str1, strlen(str1)) == 0)

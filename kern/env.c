@@ -541,7 +541,7 @@ void env_destroy(struct Env *e)
 	// it traps to the kernel.
 	if (e->env_status == ENV_RUNNING && curenv != e)
 	{
-		hprintf("ENV_DYING called");
+		// hprintf("ENV_DYING called");
 		e->env_status = ENV_DYING;
 		return;
 	}
@@ -615,7 +615,10 @@ void env_run(struct Env *e)
 	curenv = e;
 	curenv->env_status = ENV_RUNNING;
 	curenv->env_runs++;
+	// curenv->env_tf.tf_eflags &= (~FL_IF);
 	lcr3(PADDR(curenv->env_pgdir));
+
+	// hprintf("enter env [%x]>>", curenv->env_id);
 
 	env_pop_tf(&curenv->env_tf);
 

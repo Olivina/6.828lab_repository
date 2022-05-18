@@ -39,44 +39,40 @@ void sched_yield(void)
 	// below to halt the cpu.
 
 	// LAB 4: Your code here.
-	int cpu_num = cpunum();
-	int start_envid = ENVX(thiscpu->cpu_env ? thiscpu->cpu_env->env_id + 1 : 0);
-	int itr_envid;
-	bool second_turn = false;
+	int start_envid, itr_envid;
+	if (curenv)
+		start_envid = ENVX(curenv->env_id) + 1;
+	else
+		start_envid = 0;
 	for (itr_envid = start_envid;
-		 envs[itr_envid].env_status != ENV_RUNNABLE;
+		 itr_envid != start_envid + NENV;
+		 //  envs[itr_envid].env_status != ENV_RUNNABLE;
 		 // envs[itr_envid].env_status == ENV_FREE ||
 		 // envs[itr_envid].env_status == ENV_NOT_RUNNABLE;
-		 itr_envid = (itr_envid + 1) % NENV)
+		 //  itr_envid = (itr_envid + 1) % NENV
+		 itr_envid++)
 	{
-		if (itr_envid == start_envid)
+		if (envs[itr_envid % NENV].env_status == ENV_RUNNABLE)
 		{
-			if (second_turn)
-				goto no_runnable;
-			else
-				second_turn = true;
+			env_run(&envs[itr_envid % NENV]);
 		}
 	}
-	// we get the first env that could be
-	// RUNNING / RUNNABLE / DYING
-	// if(debugflag)
-	// 	cprintf("found runnable envid = %d\n", itr_envid);
-	struct Env *env_to_run = &envs[itr_envid];
-	// envid2env(itr_envid, &env_to_run, false);
+	if (curenv && curenv->env_status == ENV_RUNNING)
+	{
+		env_run(curenv);
+	}
 
-	env_run(env_to_run);
-
-	warn("should not reach here!\n");
+	// warn("should not reach here!\n");
 
 no_runnable:
 	// sched_halt never returns
 
-	for (itr_envid = 0; itr_envid < NENV; ++itr_envid)
-	{
-		if (envs[itr_envid].env_status == ENV_FREE)
-			continue;
-		hprintf("envs[0x%x]: %s", itr_envid + 0x1000, env_status_name[envs[itr_envid].env_status]);
-	}
+	// for (itr_envid = 0; itr_envid < NENV; ++itr_envid)
+	// {
+	// 	if (envs[itr_envid].env_status == ENV_FREE)
+	// 		continue;
+	// 	hprintf("envs[0x%x]: %s", itr_envid + 0x1000, env_status_name[envs[itr_envid].env_status]);
+	// }
 	sched_halt();
 }
 
@@ -118,7 +114,7 @@ void sched_halt(void)
 	xchg(&thiscpu->cpu_status, CPU_HALTED);
 
 	// Release the big kernel lock as if we were "leaving" the kernel
-	hprintf("halt");
+	// hprintf("halt");
 	unlock_kernel();
 
 	// Reset stack pointer, enable interrupts and then halt.
