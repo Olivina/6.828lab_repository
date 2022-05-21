@@ -102,7 +102,7 @@ void flush_block(void *addr)
 	void *blkaddr = ROUNDDOWN(addr, BLKSIZE);
 	int secno = ((uint32_t)addr - DISKMAP) / SECTSIZE;
 	int errno;
-	if ((errno = ide_write(secno, blkaddr, 4)) < 0)
+	if ((errno = ide_write(secno, blkaddr, BLKSIZE / SECTSIZE)) < 0)
 	{
 		panic("flush_block: ide_write = %e", errno);
 	}

@@ -260,6 +260,8 @@ sys_page_alloc(envid_t envid, void *va, int perm)
 		page_free(p);
 		return -E_NO_MEM;
 	}
+	// hprintf("before memset: va = 0x%x", va);
+	memset(page2kva(p), 0, PGSIZE * sizeof(char));
 
 	return 0;
 

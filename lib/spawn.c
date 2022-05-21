@@ -118,6 +118,7 @@ int spawn(const char *prog, const char **argv)
 		perm = PTE_P | PTE_U;
 		if (ph->p_flags & ELF_PROG_FLAG_WRITE)
 			perm |= PTE_W;
+		// cprintf("%s:%d spawn: load %s at 0x%x, size = 0x%x\n", __FILE__, __LINE__, prog, ph->p_va, ph->p_memsz);
 		if ((r = map_segment(child, ph->p_va, ph->p_memsz,
 							 fd, ph->p_filesz, ph->p_offset, perm)) < 0)
 			goto error;

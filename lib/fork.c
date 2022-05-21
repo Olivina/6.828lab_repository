@@ -69,7 +69,7 @@ pgfault(struct UTrapframe *utf)
 	else
 	{
 		// page not exists, alloc it
-		cprintf("[%08x] %s:%d: [Page Fault Handler] handle not present fault\n", envid, __FILE__, __LINE__);
+		// cprintf("[%08x] %s:%d: [Page Fault Handler] handle not present fault\n", envid, __FILE__, __LINE__);
 		if ((r = sys_page_alloc(0, va_fault_page, perm)) < 0)
 		{
 			cprintf("%s:%d: [Page Fault Handler] alloc error\n", __FILE__, __LINE__);
