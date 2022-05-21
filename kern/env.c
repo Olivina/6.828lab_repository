@@ -423,21 +423,6 @@ load_icode(struct Env *e, uint8_t *binary)
 		memcpy((void *)ph->p_va, (void *)((uint8_t *)elfhdr + ph->p_offset), ph->p_filesz);
 		// cprintf("load ph: va = 0x%x, sz = 0x%x\n", ph->p_va, ph->p_memsz);
 	}
-	// for(; sh < esh; ++sh){
-	// 		if(sh->sh_addr == 0)
-	// 			continue;
-	// 		// sh_addr != 0
-	// 		// cprintf("load section at 0x%x, size = 0x%x\n", sh->sh_addr, sh->sh_size);
-	// 		if(user_mem_check(e, (const void *)sh->sh_addr, sh->sh_size, PTE_P|PTE_U) < 0){
-	// 			cprintf("load sh: alloc page at va = 0x%x\n", sh->sh_addr);
-	// 		}
-	// 			region_alloc(e, (void*)sh->sh_addr, sh->sh_size);
-	// 		memset((void*)sh->sh_addr, 0, ph -> p_memsz * sizeof(char));
-	// 		if(sh->sh_offset != 0){
-	// 			memcpy((void*)sh->sh_addr, (void*)((uint8_t*)elfhdr + sh->sh_offset), sh->sh_size);
-	// 			cprintf("load sh: va = 0x%x, sz = 0x%x\n", sh->sh_addr, sh->sh_size);
-	// 		}
-	// 	}
 	lcr3(PADDR(kern_pgdir));
 	e->env_tf.tf_eip = (uintptr_t)elfhdr->e_entry;
 	// Now map one page for the program's initial stack
@@ -479,6 +464,7 @@ void env_create(uint8_t *binary, enum EnvType type)
 	{
 		newenv->env_tf.tf_eflags |= FL_IOPL_MASK;
 	}
+	hprintf("[%08x] is %s", newenv->env_id, newenv->env_type == 0 ? "USER" : "FS");
 }
 
 //

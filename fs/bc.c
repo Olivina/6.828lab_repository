@@ -57,7 +57,7 @@ bc_pgfault(struct UTrapframe *utf)
 
 	uint32_t secno = ((uint32_t)blkaddr - DISKMAP) / SECTSIZE;
 
-	if ((r = ide_read(secno, blkaddr, 4)) < 0)
+	if ((r = ide_read(secno, blkaddr, BLKSIZE / SECTSIZE)) < 0)
 	{
 		panic("in bc_pgfault, ide_read = %e");
 	}

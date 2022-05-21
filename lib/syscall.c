@@ -55,8 +55,8 @@ int sys_env_destroy(envid_t envid)
 envid_t
 sys_getenvid(void)
 {
-	envid_t envid = syscall(SYS_getenvid, 0, 0, 0, 0, 0, 0);
-	return envid;
+	return syscall(SYS_getenvid, 0, 0, 0, 0, 0, 0);
+	// return envid;
 }
 
 void sys_yield(void)

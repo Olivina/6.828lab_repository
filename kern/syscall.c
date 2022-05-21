@@ -156,7 +156,26 @@ sys_env_set_trapframe(envid_t envid, struct Trapframe *tf)
 	// LAB 5: Your code here.
 	// Remember to check whether the user has supplied us with a good
 	// address!
-	panic("sys_env_set_trapframe not implemented");
+	struct Env *env;
+	struct Trapframe tf_cpy;
+	int errno;
+	if ((errno = envid2env(envid, &env, true)) < 0)
+	{
+		return errno;
+	}
+	if ((errno = user_mem_check(curenv, tf, sizeof(struct Trapframe), PTE_P | PTE_U | PTE_W)))
+	{
+		hprintf("sys_env_set_trapframe: user_mem_check failed");
+		return errno;
+	}
+	memcpy((void *)&tf_cpy, tf, sizeof(struct Trapframe));
+
+	tf_cpy.tf_eflags |= FL_IOPL_0;
+	tf_cpy.tf_eflags |= FL_IF;
+
+	memcpy((void *)(&env->env_tf), (const void *)&tf_cpy, sizeof(struct Trapframe));
+	return 0;
+	// panic("sys_env_set_trapframe not implemented");
 }
 
 // Set the page fault upcall for 'envid' by modifying the corresponding struct
@@ -279,6 +298,8 @@ sys_page_map(envid_t srcenvid, void *srcva,
 	pte_t *pte_store;
 	int errno;
 
+	// hprintf("sys_page_map(%x, 0x%x, %x, 0x%x, %d)", srcenvid, srcva, dstenvid, dstva, perm);
+
 	// check if srcenvid exists
 	if ((errno = envid2env(srcenvid, &src, true)) < 0)
 	{
@@ -331,12 +352,16 @@ sys_page_map(envid_t srcenvid, void *srcva,
 		return -E_INVAL;
 	}
 
+	// hprintf("8");
 	// map to dst env dstva
+	extern int debugflag;
+	// debugflag = 1;
 	if ((errno = page_insert(dst->env_pgdir, p, dstva, perm)) < 0)
 	{
 		hprintf("err = %e", errno);
 		return -E_NO_MEM;
 	}
+	// hprintf("9");
 	return 0;
 
 	// LAB 4: Your code here.
@@ -443,16 +468,19 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 			hprintf("%e", -E_INVAL);
 			return -E_INVAL;
 		}
-		if ((psrc = page_lookup(curenv->env_pgdir, srcva, &pte_store)) == NULL)
+		if (srcva != NULL)
 		{
-			hprintf("%e", -E_INVAL);
-			return -E_INVAL;
-		}
-		page_remove(dstenv->env_pgdir, dstva);
-		if ((errno = page_insert(dstenv->env_pgdir, psrc, dstva, perm)) < 0)
-		{
-			hprintf("%e", errno);
-			return errno;
+			if ((psrc = page_lookup(curenv->env_pgdir, srcva, &pte_store)) == NULL)
+			{
+				hprintf("sys_ipc_try_send: [%x] => [%x], srcva = 0x%x", curenv->env_id, envid, srcva);
+				return -E_INVAL;
+			}
+			page_remove(dstenv->env_pgdir, dstva);
+			if ((errno = page_insert(dstenv->env_pgdir, psrc, dstva, perm)) < 0)
+			{
+				hprintf("%e", errno);
+				return errno;
+			}
 		}
 	}
 	dstenv->env_ipc_value = value;
@@ -526,6 +554,8 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		return (int32_t)sys_exofork();
 	case SYS_env_set_status:
 		return sys_env_set_status((envid_t)a1, (int)a2);
+	case SYS_env_set_trapframe:
+		return sys_env_set_trapframe((envid_t)a1, (struct Trapframe *)a2);
 	case SYS_env_set_pgfault_upcall:
 		return sys_env_set_pgfault_upcall((envid_t)a1, (void *)a2);
 	case SYS_yield:

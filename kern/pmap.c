@@ -500,21 +500,22 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 	if (!pgdir)
 		panic("invalid pgdir pointer");
 	if (debugflag)
-		cprintf("pgdir_walk: called with pgdir = 0x%x, va = 0x%x, PDX(va) = 0x%x, PTX(va) = 0x%x\n", pgdir, va, PDX(va), PTX(va));
+		cprintf("%s:%d pgdir_walk called with pgdir = 0x%x,\n va = 0x%x, PDX(va) = 0x%x, PTX(va) = 0x%x\n", __FILE__, __LINE__, pgdir, va, PDX(va), PTX(va));
 	pte_t *pte_bs = NULL, *ret_pte = NULL;
 	pde_t *pde = (pde_t *)pgdir + PDX(va);
 	if (!(*pde & PTE_P))
 	{
 		if (debugflag)
 		{
-			cprintf("pgdir_walk: PDE for PDX(va) = 0x%x not available\npgdir_walk: pde = 0x%x, *pde = 0x%x\n", PDX(va), pde, *pde);
+			cprintf("%s:%d pgdir_walk: PDE for PDX(va) = 0x%x not available\npgdir_walk: pde = 0x%x, *pde = 0x%x\n",
+					__FILE__, __LINE__, PDX(va), pde, *pde);
 		}
 		// the page directory doesn't have this entry
 		if (create)
 		{
 			if (debugflag)
 			{
-				cprintf("pgdir_walk: use one new page for new page table\n");
+				cprintf("%s:%d pgdir_walk use one new page for new page table\n", __FILE__, __LINE__);
 			}
 			// create
 			// create a new page table
@@ -527,13 +528,14 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 			*pde = (page2pa(new_page_des) | PTE_P | PTE_W | PTE_U);
 			ret_pte = (pte_t *)page2kva(new_page_des) + PTX(va);
 			if (debugflag)
-				cprintf("pgdir_walk: new page used for PageTable: 0x%x, PTX(va) = 0x%x, ret_pte = 0x%x\n", page2kva(new_page_des), PTX(va), ret_pte);
+				cprintf("%s:%d pgdir_walk: new page used for PageTable: 0x%x,\n PTX(va) = 0x%x, ret_pte = 0x%x\n",
+						__FILE__, __LINE__, page2kva(new_page_des), PTX(va), ret_pte);
 		}
 		else // not create
 		{
 			if (debugflag)
 			{
-				cprintf("pgdir_walk: not create PDE for PDX(va) = 0x%x, return NULL\n", PDX(va));
+				cprintf("%s:%d pgdir_walk: not create PDE for PDX(va) = 0x%x, return NULL\n", __FILE__, __LINE__, PDX(va));
 			}
 			return NULL;
 		}
@@ -542,8 +544,9 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 	{
 		if (debugflag)
 		{
-			cprintf("pgdir_walk: PDE for PDX(va) = 0x%x exists\npgdir_walk: pde = 0x%x, *pde = 0x%x\n", PDX(va), pde, *pde);
-			cprintf("pgdir_walk: PDE2VADDR(pde) = 0x%x\n", PDE2VADDR((uint32_t)*pde));
+			cprintf("%s:%d pgdir_walk: PDE for PDX(va) = 0x%x exists\npgdir_walk: pde = 0x%x, *pde = 0x%x\n",
+					__FILE__, __LINE__, PDX(va), pde, *pde);
+			cprintf("%s:%d pgdir_walk: PDE2VADDR(pde) = 0x%x\n", __FILE__, __LINE__, PDE2VADDR((uint32_t)*pde));
 		}
 		// the page directory has this entry
 		// pte_bs = PTE2VADDR(KADDR(*PDE2VADDR(KADDR(pde)))) + PTX(va);
@@ -557,7 +560,7 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 	}
 	// pde = (char*) pgdir + PDX(va);
 	if (debugflag)
-		cprintf("pgdir_walk: ret_pte = 0x%x, *ret_pte = 0x%x\n", ret_pte, *ret_pte);
+		cprintf("%s:%d pgdir_walk: ret_pte = 0x%x, *ret_pte = 0x%x\n", __FILE__, __LINE__, ret_pte, *ret_pte);
 	return ret_pte;
 }
 
@@ -575,7 +578,10 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 static void
 boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
 {
-
+	if (pa >= 0xf0000000)
+	{
+		hprintf("boot map region: pa = 0x%x", pa);
+	}
 	// Fill this function in
 	if (debugflag)
 		cprintf("boot_map_region: called with pgdir = 0x%x, va = 0x%x, size = 0x%x, pa = 0x%x\n", pgdir, va, size, pa);
@@ -652,9 +658,11 @@ boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm
 //
 int page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
 {
+	// debugflag = 1;
 	// Fill this function in
+	// hprintf("")
 	if (debugflag)
-		cprintf("page_insert: called with pa = 0x%x, va = 0x%x\n", page2pa(pp), va);
+		hprintf("page insert called with pa = 0x%x, va = 0x%x\n", page2pa(pp), va);
 	const int CREATE = 1;
 	if (!pp)
 		panic("page_insert: invalid pp");
@@ -667,21 +675,22 @@ int page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
 	if (pte_ptr)
 	{ // exist
 		if (debugflag)
-			cprintf("page_insert: pte_ptr = 0x%x, *pte_ptr = 0x%x\n", pte_ptr, *pte_ptr);
+			hprintf("page_insert: pte_ptr = 0x%x, *pte_ptr = 0x%x\n", pte_ptr, *pte_ptr);
 		pp->pp_ref++;
-		if (*pte_ptr)
+		if (*pte_ptr & PTE_P)
 		{
 			if (debugflag)
-				cprintf("page_insert: pte exists\n");
+				hprintf("page_insert: pte exists\n");
 			page_remove(pgdir, va);
 		}
+		// hprintf("insert: map region: page2pa(pp) = 0x%x", page2pa(pp));
 		boot_map_region(pgdir, (uintptr_t)va, PGSIZE, page2pa(pp), perm);
 	}
 	else
 		// not exist
 		return -E_NO_MEM;
 	// boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
-
+	debugflag = 0;
 	return 0;
 }
 
@@ -700,6 +709,8 @@ struct PageInfo *
 page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
 {
 	// Fill this function in
+	if (debugflag)
+		hprintf("page_lookup called with va = 0x%x", va);
 	const int NO_CREATE = 0;
 	pte_t *ret = pgdir_walk(pgdir, va, NO_CREATE);
 	if (!ret)
@@ -708,10 +719,17 @@ page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
 			*pte_store = NULL;
 		return NULL;
 	}
-	// exist
-	if (pte_store)
-		*pte_store = ret;
-	return pa2page((PTE_ADDR(*ret)));
+	if (*ret & PTE_P)
+	{
+		// exist
+		if (pte_store)
+			*pte_store = ret;
+		return pa2page((PTE_ADDR(*ret)));
+	}
+	else
+	{
+		return NULL;
+	}
 }
 
 //
@@ -734,7 +752,9 @@ void page_remove(pde_t *pgdir, void *va)
 	// Fill this function in
 	const int NO_CREATE = 0;
 	pte_t *fuck = NULL;
+	// hprintf("page_remove: 1");
 	struct PageInfo *tst = page_lookup(pgdir, va, &fuck);
+	// hprintf("page_remove: 2");
 	if (!tst)
 		return;
 	// exist

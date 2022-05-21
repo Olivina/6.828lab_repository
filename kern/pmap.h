@@ -17,6 +17,10 @@ extern size_t npages;
 
 extern pde_t *kern_pgdir;
 
+#include <kern/cpu.h>
+
+extern struct CpuInfo cpus[NCPU];
+
 /* This macro takes a kernel virtual address -- an address that points above
  * KERNBASE, where the machine's maximum 256MB of physical memory is mapped --
  * and returns the corresponding physical address.  It panics if you pass it a
@@ -79,7 +83,8 @@ static inline struct PageInfo *
 pa2page(physaddr_t pa)
 {
 	if (PGNUM(pa) >= npages)
-		panic("pa2page called with invalid pa");
+		panic("pa2page called by [%x] with invalid pa = 0x%x,\nPGNUM(pa) = %d >= npages = %d",
+			  cpus[0].cpu_env->env_id, pa, PGNUM(pa), npages);
 	return &pages[PGNUM(pa)];
 }
 

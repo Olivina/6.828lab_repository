@@ -149,6 +149,10 @@
         "types.h": "c",
         "picirq.h": "c",
         "stdarg.h": "c",
-        "fs.h": "c"
+        "fs.h": "c",
+        "ratio": "c",
+        "tuple": "c",
+        "utility": "c",
+        "variant": "c"
     }
 }

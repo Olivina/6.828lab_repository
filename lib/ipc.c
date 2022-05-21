@@ -67,7 +67,7 @@ void ipc_send(envid_t to_env, uint32_t val, void *pg, int perm)
 		{
 			cprintf("%s:%d: to_env = %x, val = %d, pg = %x, perm = %d\n",
 					__FILE__, __LINE__, to_env, val, pg, perm);
-			panic("invalid value, err = %d", errno);
+			panic("invalid value, err = %e", errno);
 		}
 		sys_yield();
 	}

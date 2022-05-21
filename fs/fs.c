@@ -65,7 +65,7 @@ int alloc_block(void)
 		{
 			bitmap[blockno / 32] ^= 1 << (blockno % 32);
 			flush_block(bitmap);
-			cprintf("%s:%d alloc blkno = %d\n", __FILE__, __LINE__, blockno);
+			// cprintf("%s:%d alloc blkno = %d\n", __FILE__, __LINE__, blockno);
 			return blockno;
 		}
 		// cprintf("%s:%d alloc_block: blkno = %d is not free\n", __FILE__, __LINE__, blockno);
