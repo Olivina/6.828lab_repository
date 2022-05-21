@@ -43,6 +43,7 @@ static const char *const error_string[MAXERROR] =
  */
 static void
 printnum(void (*putch)(int, void *), void *putdat,
+		 //  unsigned long long num, unsigned base, int width, int padc, int color)
 		 unsigned long long num, unsigned base, int width, int padc, int color)
 {
 	// first recursively print all preceding (more significant) digits

@@ -3,11 +3,6 @@
 #include <inc/string.h>
 #include <inc/lib.h>
 
-#ifndef JOS_USER
-extern volatile pte_t uvpt[]; // VA of "virtual page table"
-extern volatile pde_t uvpd[]; // VA of current page directory
-#endif
-
 // PTE_COW marks copy-on-write page table entries.
 // It is one of the bits explicitly allocated to user processes (PTE_AVAIL).
 #define PTE_COW 0x800

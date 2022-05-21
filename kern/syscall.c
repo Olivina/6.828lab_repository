@@ -293,13 +293,13 @@ sys_page_map(envid_t srcenvid, void *srcva,
 		return errno;
 	}
 
-	if (((uint32_t)srcva) % PGSIZE || ((uint32_t)srcva) >= UTOP)
+	if (((uint32_t)srcva) % PGSIZE || (((uint32_t)srcva) >= UTOP && curenv->env_type != ENV_TYPE_FS))
 	{
 		hprintf("((uint32_t)srcva) = 0x%x,  >= UTOP = 0x%x", ((uint32_t)srcva), UTOP);
 		return -E_INVAL;
 	}
 
-	if (((uint32_t)dstva) % PGSIZE || ((uint32_t)dstva) >= UTOP)
+	if (((uint32_t)dstva) % PGSIZE || (((uint32_t)dstva) >= UTOP && curenv->env_type != ENV_TYPE_FS))
 	{
 		hprintf("err = %e", errno);
 		return -E_INVAL;
@@ -423,6 +423,7 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 
 	if ((errno = envid2env(envid, &dstenv, false)) < 0)
 	{
+		hprintf("%e", errno);
 		return errno; // -E_BAD_ENV
 	}
 	if (dstenv->env_ipc_recving != 1)
@@ -434,19 +435,23 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 	{
 		if ((uint32_t)srcva >= UTOP || (uint32_t)srcva % PGSIZE)
 		{
+			hprintf("%e", -E_INVAL);
 			return -E_INVAL;
 		}
-		if ((errno = user_mem_check(curenv, srcva, PGSIZE, perm)) < 0)
+		if (srcva != NULL && (errno = user_mem_check(curenv, srcva, PGSIZE, perm)) < 0)
 		{
+			hprintf("%e", -E_INVAL);
 			return -E_INVAL;
 		}
 		if ((psrc = page_lookup(curenv->env_pgdir, srcva, &pte_store)) == NULL)
 		{
+			hprintf("%e", -E_INVAL);
 			return -E_INVAL;
 		}
 		page_remove(dstenv->env_pgdir, dstva);
 		if ((errno = page_insert(dstenv->env_pgdir, psrc, dstva, perm)) < 0)
 		{
+			hprintf("%e", errno);
 			return errno;
 		}
 	}
@@ -455,6 +460,7 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 	dstenv->env_ipc_recving = 0;
 	dstenv->env_status = ENV_RUNNABLE;
 	dstenv->env_tf.tf_regs.reg_eax = 0;
+	dstenv->env_ipc_perm = perm;
 	return 0;
 
 	// LAB 4: Your code here.

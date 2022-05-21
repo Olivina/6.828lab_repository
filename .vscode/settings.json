@@ -147,6 +147,8 @@
         "lib.h": "c",
         "mmu.h": "c",
         "types.h": "c",
-        "picirq.h": "c"
+        "picirq.h": "c",
+        "stdarg.h": "c",
+        "fs.h": "c"
     }
 }

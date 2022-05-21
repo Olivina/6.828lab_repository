@@ -7,6 +7,11 @@
 #ifndef JOS_INC_LIB_H
 #define JOS_INC_LIB_H 1
 
+#ifndef JOS_USER
+extern volatile pte_t uvpt[]; // VA of "virtual page table"
+extern volatile pde_t uvpd[]; // VA of current page directory
+#endif
+
 #include <inc/types.h>
 #include <inc/stdio.h>
 #include <inc/stdarg.h>
