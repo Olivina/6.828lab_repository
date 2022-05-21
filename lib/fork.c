@@ -114,37 +114,32 @@ duppage(envid_t envid, unsigned pn)
 	int r;
 
 	pte_t *pte_ptr = (pte_t *)uvpt;
-	// pte_t *uxstack_entry = pte_ptr + (PDX(UXSTACKBOTTOM) * 1024 + PTX(UXSTACKBOTTOM));
 	pte_ptr += pn;
 
-	// cprintf("%s:%d: duppage: addr to duplicate: 0x%x\n", __FILE__, __LINE__, pn * PGSIZE);
-
-	// cprintf("%s:%d: duppage: uxstack_entry = 0x%x\n", __FILE__, __LINE__, uxstack_entry);
+	if (*pte_ptr & PTE_SHARE)
+	{
+		return sys_page_map(0, (void *)(pn * PGSIZE), envid, (void *)(pn * PGSIZE), PTE_SYSCALL);
+	}
 
 	if (*pte_ptr & PTE_W || *pte_ptr & PTE_COW)
 	{
-		// cprintf("%s:%d: duppage1: *uxstack_entry = 0x%x\n", __FILE__, __LINE__, *uxstack_entry);
-		// cprintf("%s:%d: duppage1: *pte_ptr = 0x%x\n", __FILE__, __LINE__, *pte_ptr);
 		if ((r = sys_page_map(0, (void *)(pn * PGSIZE), envid, (void *)(pn * PGSIZE), PTE_COW | PTE_P | PTE_U)) < 0)
 		{
 			cprintf("%s:%d: err = %e\n", __FILE__, __LINE__, r);
 			return r;
 		}
-		// cprintf("%s:%d: duppage2: *uxstack_entry = 0x%x\n", __FILE__, __LINE__, *uxstack_entry);
-		// cprintf("%s:%d: duppage2: *pte_ptr = 0x%x\n", __FILE__, __LINE__, *pte_ptr);
 		if ((r = sys_page_map(envid, (void *)(pn * PGSIZE), 0, (void *)(pn * PGSIZE), PTE_COW | PTE_P | PTE_U)) < 0)
 		{
 			cprintf("%s:%d: err = %e\n", __FILE__, __LINE__, r);
 			return r;
 		}
-		// cprintf("%s:%d: duppage3: *uxstack_entry = 0x%x\n", __FILE__, __LINE__, *uxstack_entry);
-		// cprintf("%s:%d: duppage3: *pte_ptr = 0x%x\n", __FILE__, __LINE__, *pte_ptr);
 	}
 	else
 	{
 		// READ ONLY
-		cprintf("read only fault\n");
 		int perm = *pte_ptr & PTE_SYSCALL;
+		if (perm & PTE_SHARE)
+			cprintf("%s:%d duppage: PTE_SHARE\n", __FILE__, __LINE__);
 		if ((r = sys_page_map(0, (void *)(pn * PGSIZE), envid, (void *)(pn * PGSIZE), perm | PTE_P | PTE_U)) < 0)
 		{
 			cprintf("%s:%d: err = %e\n", __FILE__, __LINE__, r);
@@ -174,10 +169,8 @@ duppage(envid_t envid, unsigned pn)
 //   Neither user exception stack should ever be marked copy-on-write,
 //   so you must allocate a new page for the child's user exception stack.
 //
-envid_t
-fork(void)
+envid_t fork(void)
 {
-
 	set_pgfault_handler(pgfault);
 
 	envid_t envid;

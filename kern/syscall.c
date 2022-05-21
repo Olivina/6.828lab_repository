@@ -342,7 +342,7 @@ sys_page_map(envid_t srcenvid, void *srcva,
 	// acquire the physical page
 	if ((p = page_lookup(src->env_pgdir, srcva, &pte_store)) == NULL)
 	{
-		hprintf("err = %e", errno);
+		hprintf("err = %e", -E_INVAL);
 		return -E_INVAL;
 	}
 

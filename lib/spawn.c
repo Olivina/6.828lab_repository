@@ -314,5 +314,41 @@ static int
 copy_shared_pages(envid_t child)
 {
 	// LAB 5: Your code here.
+	// pde_t *pde_ptr = (pde_t *)uvpd;
+	// pte_t *pte_ptr = (pte_t *)uvpt;
+	// int pn, ppn;
+	// int count = 0, count_present = 0;
+	// int errno;
+
+	// for (pn = 0; pn <= UTOP / PTSIZE; ++pn)
+	// {
+	// 	// pde
+	// 	if (*(pde_ptr + pn) & PTE_P)
+	// 	{
+	// 		for (ppn = 0; ppn <= NPTENTRIES; ++ppn)
+	// 		{
+	// 			if (*(pte_ptr + pn * NPTENTRIES + ppn) & (PTE_SHARE | PTE_U | PTE_P))
+	// 			{
+	// 				int perm = *pte_ptr & PTE_SYSCALL;
+	// 				cprintf("%s:%d copy_shared_pages: PTE_SHAR\n", __FILE__, __LINE__);
+	// 				if ((errno = sys_page_map(0, (void *)((pn * NPTENTRIES + ppn) * PGSIZE), child, (void *)((pn * NPTENTRIES + ppn) * PGSIZE), perm)) < 0)
+	// 				{
+	// 					cprintf("%s:%d: err = %e\n", __FILE__, __LINE__, errno);
+	// 					return errno;
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// }
+	uintptr_t addr;
+	for (addr = 0; addr < UTOP; addr += PGSIZE)
+	{
+		if ((uvpd[PDX(addr)] & PTE_P) && (uvpt[PGNUM(addr)] & PTE_P) &&
+			(uvpt[PGNUM(addr)] & PTE_U) && (uvpt[PGNUM(addr)] & PTE_SHARE))
+		{
+			sys_page_map(0, (void *)addr, child, (void *)addr, (uvpt[PGNUM(addr)] & PTE_SYSCALL));
+		}
+	}
+	return 0;
 	return 0;
 }
